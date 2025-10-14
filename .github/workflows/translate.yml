@@ -34,7 +34,7 @@ jobs:
     
     - name: Create translation directories
       run: |
-        mkdir -p en tw kr jp
+        mkdir -p en tw kr jp ru
     
     - name: Create translation script
       run: |
@@ -124,6 +124,7 @@ jobs:
                 'tw': 'zh-TW',   # 繁体中文
                 'kr': 'ko',      # 韩语
                 'jp': 'ja'       # 日语
+                'ru': 'ru'
             }
             
             success_count = 0
@@ -176,7 +177,7 @@ jobs:
         echo "| Language | Directory | Status |" >> $GITHUB_STEP_SUMMARY
         echo "|----------|-----------|--------|" >> $GITHUB_STEP_SUMMARY
         
-        for dir in en tw kr jp; do
+        for dir in en tw kr jp ru; do
           if [ -f "$dir/kejilion.sh" ]; then
             size=$(stat -c%s "$dir/kejilion.sh")
             echo "| $dir | /$dir/ | ✅ Success (${size} bytes) |" >> $GITHUB_STEP_SUMMARY
