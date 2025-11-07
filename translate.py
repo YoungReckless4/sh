@@ -79,10 +79,6 @@ if __name__ == "__main__":
     
     # 语言映射：目录名 -> Google翻译语言代码
     languages = {
-        'en': 'en',      # 英语
-        'tw': 'zh-TW',   # 繁体中文
-        'kr': 'ko',      # 韩语
-        'jp': 'ja',       # 日语
         'ru': 'ru'
     }
     
