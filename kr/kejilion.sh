@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.1.9"
+sh_v="4.2.1"
 
 
 gl_hui='\e[37m'
@@ -216,6 +216,8 @@ check_disk_space() {
 	local required_gb=$1
 	local path=${2:-/}
 
+	mkdir -p "$path"
+
 	local required_space_mb=$((required_gb * 1024))
 	local available_space_mb=$(df -m "$path" | awk 'NR==2 {print $4}')
 
@@ -234,6 +236,11 @@ check_disk_space() {
 
 install_dependency() {
 	install wget unzip tar jq grep
+
+	check_swap
+	auto_optimize_dns
+	prefer_ipv4
+
 }
 
 remove() {
@@ -379,23 +386,23 @@ if [ "$country" = "CN" ]; then
 	cat > /etc/docker/daemon.json << EOF
 {
   "registry-mirrors": [
-	"https://docker-0.unsee.tech",
-	"https://docker.1panel.live",
-	"https://registry.dockermirror.com",
-	"https://docker.imgdb.de",
-	"https://docker.m.daocloud.io",
-	"https://hub.firefly.store",
-	"https://hub.littlediary.cn",
+	"https://docker.1ms.run",
+	"https://docker.m.ixdev.cn",
 	"https://hub.rat.dev",
-	"https://dhub.kubesre.xyz",
-	"https://cjie.eu.org",
-	"https://docker.1panelproxy.com",
+	"https://dockerproxy.net",
+	"https://docker-registry.nmqu.com",
+	"https://docker.amingg.com",
 	"https://docker.hlmirror.com",
-	"https://hub.fast360.xyz",
-	"https://dockerpull.cn",
-	"https://cr.laoyou.ip-ddns.com",
-	"https://docker.melikeme.cn",
-	"https://docker.kejilion.pro"
+	"https://hub1.nat.tf",
+	"https://hub2.nat.tf",
+	"https://hub3.nat.tf",
+	"https://docker.m.daocloud.io",
+	"https://docker.kejilion.pro",
+	"https://docker.367231.xyz",
+	"https://hub.1panel.dev",
+	"https://dockerproxy.cool",
+	"https://docker.apiba.cn",
+	"https://proxy.vvvv.ee"
   ]
 }
 EOF
@@ -1335,11 +1342,9 @@ ldnmp_v() {
 install_ldnmp_conf() {
 
   # 필요한 디렉토리 및 파일 생성
-  cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis web/log/nginx && touch web/docker-compose.yml
+  cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/stream.d web/redis web/log/nginx && touch web/docker-compose.yml
   wget -O /home/web/nginx.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
   wget -O /home/web/conf.d/default.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/default10.conf
-  wget -O /home/web/redis/valkey.conf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/valkey.conf
-
 
   default_server_ssl
 
@@ -1355,31 +1360,70 @@ install_ldnmp_conf() {
 }
 
 
+update_docker_compose_with_db_creds() {
+
+  cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
+
+  if ! grep -q "stream" /home/web/docker-compose.yml; then
+	wget -O /home/web/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml
+
+  	dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
+  	dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
+  	dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
+
+	sed -i "s#webroot#$dbrootpasswd#g" /home/web/docker-compose.yml
+	sed -i "s#kejilionYYDS#$dbusepasswd#g" /home/web/docker-compose.yml
+	sed -i "s#kejilion#$dbuse#g" /home/web/docker-compose.yml
+  fi
+
+  if grep -q "kjlion/nginx:alpine" /home/web/docker-compose1.yml; then
+  	sed -i 's|kjlion/nginx:alpine|nginx:alpine|g' /home/web/docker-compose.yml  > /dev/null 2>&1
+	sed -i 's|nginx:alpine|kjlion/nginx:alpine|g' /home/web/docker-compose.yml  > /dev/null 2>&1
+  fi
+
+}
+
+
+
+
+
+auto_optimize_dns() {
+	# 국가 코드(예: CN, US 등)를 가져옵니다.
+	local country=$(curl -s ipinfo.io/country)
+
+	# 국가에 따라 DNS 설정
+	if [ "$country" = "CN" ]; then
+		local dns1_ipv4="223.5.5.5"
+		local dns2_ipv4="183.60.83.19"
+		local dns1_ipv6="2400:3200::1"
+		local dns2_ipv6="2400:da00::6666"
+	else
+		local dns1_ipv4="1.1.1.1"
+		local dns2_ipv4="8.8.8.8"
+		local dns1_ipv6="2606:4700:4700::1111"
+		local dns2_ipv6="2001:4860:4860::8888"
+	fi
+
+	# DNS를 설정하는 함수 호출(사용자가 정의해야 함)
+	set_dns "$dns1_ipv4" "$dns2_ipv4" "$dns1_ipv6" "$dns2_ipv6"
+
+
+}
+
+
+prefer_ipv4() {
+grep -q '^precedence ::ffff:0:0/96  100' /etc/gai.conf 2>/dev/null \
+	|| echo 'precedence ::ffff:0:0/96  100' >> /etc/gai.conf
+echo "IPv4 우선순위로 전환됨"
+send_stats "IPv4 우선순위로 전환됨"
+}
+
 
 
 
 install_ldnmp() {
 
-	  check_swap
-
-	  cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
-
-	  if ! grep -q "network_mode" /home/web/docker-compose.yml; then
-		wget -O /home/web/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml
-	  	dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
-	  	dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
-	  	dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
-
-  		sed -i "s#webroot#$dbrootpasswd#g" /home/web/docker-compose.yml
-  		sed -i "s#kejilionYYDS#$dbusepasswd#g" /home/web/docker-compose.yml
-  		sed -i "s#kejilion#$dbuse#g" /home/web/docker-compose.yml
-
-	  fi
-
-	  if grep -q "kjlion/nginx:alpine" /home/web/docker-compose1.yml; then
-	  	sed -i 's|kjlion/nginx:alpine|nginx:alpine|g' /home/web/docker-compose.yml  > /dev/null 2>&1
-		sed -i 's|nginx:alpine|kjlion/nginx:alpine|g' /home/web/docker-compose.yml  > /dev/null 2>&1
-	  fi
+	  update_docker_compose_with_db_creds
 
 	  cd /home/web && docker compose up -d
 	  sleep 1
@@ -2244,9 +2288,11 @@ web_optimization() {
 				  1)
 				  send_stats "사이트 표준 모드"
 
-				  # nginx 튜닝
-				  sed -i 's/worker_connections.*/worker_connections 10240;/' /home/web/nginx.conf
-				  sed -i 's/worker_processes.*/worker_processes 4;/' /home/web/nginx.conf
+				  local cpu_cores=$(nproc)
+				  local connections=$((1024 * ${cpu_cores}))
+				  sed -i "s/worker_processes.*/worker_processes ${cpu_cores};/" /home/web/nginx.conf
+				  sed -i "s/worker_connections.*/worker_connections ${connections};/" /home/web/nginx.conf
+
 
 				  # PHP 튜닝
 				  wget -O /home/optimized_php.ini ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
@@ -2285,8 +2331,10 @@ web_optimization() {
 				  send_stats "사이트 고성능 모드"
 
 				  # nginx 튜닝
-				  sed -i 's/worker_connections.*/worker_connections 20480;/' /home/web/nginx.conf
-				  sed -i 's/worker_processes.*/worker_processes 8;/' /home/web/nginx.conf
+				  local cpu_cores=$(nproc)
+				  local connections=$((2048 * ${cpu_cores}))
+				  sed -i "s/worker_processes.*/worker_processes ${cpu_cores};/" /home/web/nginx.conf
+				  sed -i "s/worker_connections.*/worker_connections ${connections};/" /home/web/nginx.conf
 
 				  # PHP 튜닝
 				  wget -O /home/optimized_php.ini ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
@@ -3227,7 +3275,7 @@ ldnmp_wp() {
   wget -O latest.zip ${gh_proxy}github.com/kejilion/Website_source_code/raw/refs/heads/main/wp-latest.zip
   unzip latest.zip
   rm latest.zip
-  echo "define('FS_METHOD', 'direct'); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379');" >> /home/web/html/$yuming/wordpress/wp-config-sample.php
+  echo "define('FS_METHOD', 'direct'); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379'); define('WP_REDIS_MAXTTL', 86400); define('WP_CACHE_KEY_SALT', '${yuming}_');" >> /home/web/html/$yuming/wordpress/wp-config-sample.php
   sed -i "s|database_name_here|$dbname|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
   sed -i "s|username_here|$dbuse|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
   sed -i "s|password_here|$dbusepasswd|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
@@ -3277,8 +3325,6 @@ ldnmp_Proxy() {
 ldnmp_Proxy_backend() {
 	clear
 	webname="反向代理-负载均衡"
-	yuming="${1:-}"
-	reverseproxy_port="${2:-}"
 
 	send_stats "설치하다$webname"
 	echo "배포 시작$webname"
@@ -3313,6 +3359,200 @@ ldnmp_Proxy_backend() {
 	docker exec nginx nginx -s reload
 	nginx_web_on
 }
+
+
+
+
+
+
+list_stream_services() {
+
+	STREAM_DIR="/home/web/stream.d"
+	printf "%-25s %-18s %-25s %-20s\n" "服务名" "通信类型" "本机地址" "后端地址"
+
+	if [ -z "$(ls -A "$STREAM_DIR")" ]; then
+		return
+	fi
+
+	for conf in "$STREAM_DIR"/*; do
+		# 서비스 이름은 파일 이름을 사용합니다.
+		service_name=$(basename "$conf" .conf)
+
+		# 업스트림 블록에서 서버 백엔드 IP:포트 가져오기
+		backend=$(grep -Po '(?<=server )[^;]+' "$conf" | head -n1)
+
+		# 청취 포트 가져오기
+		listen_port=$(grep -Po '(?<=listen )[^;]+' "$conf" | head -n1)
+
+		# 기본 로컬 IP
+		ip_address
+		local_ip="$ipv4_address"
+
+		# 먼저 파일 이름 접미사 또는 내용으로 판단하여 통신 유형을 가져옵니다.
+		if grep -qi 'udp;' "$conf"; then
+			proto="udp"
+		else
+			proto="tcp"
+		fi
+
+		# 스플라이스 청취 IP:포트
+		local_addr="$local_ip:$listen_port"
+
+		printf "%-22s %-14s %-21s %-20s\n" "$service_name" "$proto" "$local_addr" "$backend"
+	done
+}
+
+
+
+
+
+
+
+
+
+stream_panel() {
+	send_stats "4계층 프록시 스트리밍"
+	local app_id="104"
+	local docker_name="nginx"
+
+	while true; do
+		clear
+		check_docker_app
+		check_docker_image_update $docker_name
+		echo -e "스트림 4계층 프록시 전달 도구$check_docker $update_status"
+		echo "NGINX 스트림은 고성능 전송 계층 트래픽 전달 및 로드 밸런싱을 달성하는 데 사용되는 NGINX의 TCP/UDP 프록시 모듈입니다."
+		echo "------------------------"
+		if [ -d "/home/web/stream.d" ]; then
+			list_stream_services
+		fi
+		echo ""
+		echo "------------------------"
+		echo "1. 설치 2. 업데이트 3. 제거"
+		echo "------------------------"
+		echo "4. 포워딩 서비스 추가 5. 포워딩 서비스 수정 6. 포워딩 서비스 삭제"
+		echo "------------------------"
+		echo "0. 이전 메뉴로 돌아가기"
+		echo "------------------------"
+		read -e -p "선택 항목을 입력하세요." choice
+		case $choice in
+			1)
+				nginx_install_status
+				add_app_id
+				send_stats "Stream 4계층 에이전트 설치"
+				;;
+			2)
+				update_docker_compose_with_db_creds
+				nginx_upgrade
+				add_app_id
+				send_stats "Stream 4계층 프록시 업데이트"
+				;;
+			3)
+				read -e -p "nginx 컨테이너를 삭제하시겠습니까? 이는 웹사이트 기능에 영향을 미칠 수 있습니다! (예/아니요):" confirm
+				if [[ "$confirm" =~ ^[Yy]$ ]]; then
+					docker rm -f nginx
+					sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+					send_stats "Stream 4계층 프록시 업데이트"
+					echo "nginx 컨테이너가 삭제되었습니다."
+				else
+					echo "작업이 취소되었습니다."
+				fi
+
+				;;
+
+			4)
+				ldnmp_Proxy_backend_stream
+				add_app_id
+				send_stats "레이어 4 프록시 추가"
+				;;
+			5)
+				send_stats "전달 구성 수정"
+				read -e -p "편집하려는 서비스 이름을 입력하십시오:" stream_name
+				install nano
+				nano /home/web/stream.d/$stream_name.conf
+				docker restart nginx
+				send_stats "레이어 4 프록시 수정"
+				;;
+			6)
+				send_stats "전달 구성 삭제"
+				read -e -p "삭제하려는 서비스 이름을 입력하세요." stream_name
+				rm /home/web/stream.d/$stream_name.conf > /dev/null 2>&1
+				docker restart nginx
+				send_stats "레이어 4 프록시 삭제"
+				;;
+			*)
+				break
+				;;
+		esac
+		break_end
+	done
+}
+
+
+
+ldnmp_Proxy_backend_stream() {
+	clear
+	webname="Stream四层代理-负载均衡"
+
+	send_stats "설치하다$webname"
+	echo "배포 시작$webname"
+
+	# 에이전트 이름 가져오기
+	read -rp "프록시 전달 이름(예: mysql_proxy)을 입력하세요." proxy_name
+	if [ -z "$proxy_name" ]; then
+		echo "이름은 비워둘 수 없습니다."; return 1
+	fi
+
+	# 수신 포트 가져오기
+	read -rp "로컬 수신 포트(예: 3306)를 입력하십시오." listen_port
+	if ! [[ "$listen_port" =~ ^[0-9]+$ ]]; then
+		echo "포트는 숫자여야 합니다."; return 1
+	fi
+
+	echo "계약 유형을 선택하십시오:"
+	echo "1. TCP    2. UDP"
+	read -rp "일련 번호 [1-2]를 입력하십시오:" proto_choice
+
+	case "$proto_choice" in
+		1) proto="tcp"; listen_suffix="" ;;
+		2) proto="udp"; listen_suffix=" udp" ;;
+		*) echo "잘못된 선택"; return 1 ;;
+	esac
+
+	read -e -p "하나 이상의 백엔드 IP+포트를 공백으로 구분하여 입력하세요(예: 10.13.0.2:3306 10.13.0.3:3306)." reverseproxy_port
+
+	nginx_install_status
+	cd /home && mkdir -p web/stream.d
+	grep -q '^[[:space:]]*stream[[:space:]]*{' /home/web/nginx.conf || echo -e '\nstream {\n    include /etc/nginx/stream.d/*.conf;\n}' | tee -a /home/web/nginx.conf
+	wget -O /home/web/stream.d/$proxy_name.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend-stream.conf
+
+	backend=$(tr -dc 'A-Za-z' < /dev/urandom | head -c 8)
+	sed -i "s/backend_yuming_com/${proxy_name}_${backend}/g" /home/web/stream.d/"$proxy_name".conf
+	sed -i "s|listen 80|listen $listen_port $listen_suffix|g" /home/web/stream.d/$proxy_name.conf
+	sed -i "s|listen \[::\]:|listen [::]:${listen_port} ${listen_suffix}|g" "/home/web/stream.d/${proxy_name}.conf"
+
+	upstream_servers=""
+	for server in $reverseproxy_port; do
+		upstream_servers="$upstream_servers    server $server;\n"
+	done
+
+	sed -i "s/# 动态添加/$upstream_servers/g" /home/web/stream.d/$proxy_name.conf
+
+	docker exec nginx nginx -s reload
+	clear
+	echo "당신의$webname지어졌습니다!"
+	echo "------------------------"
+	echo "방문 주소:"
+	ip_address
+	if [ -n "$ipv4_address" ]; then
+		echo "$ipv4_address:${listen_port}"
+	fi
+	if [ -n "$ipv6_address" ]; then
+		echo "$ipv6_address:${listen_port}"
+	fi
+	echo ""
+}
+
+
 
 
 
@@ -5597,7 +5837,7 @@ linux_trash() {
 
 	clear
 	echo -e "현재 휴지통${trash_status}"
-	echo -e "활성화한 후에는 중요한 파일이 실수로 삭제되는 것을 방지하기 위해 rm으로 삭제된 파일이 먼저 휴지통에 저장됩니다!"
+	echo -e "활성화한 후에는 중요한 파일이 실수로 삭제되는 것을 방지하기 위해 rm으로 삭제된 파일이 먼저 휴지통에 들어갑니다!"
 	echo "------------------------------------------------"
 	ls -l --color=auto "$TRASH_DIR" 2>/dev/null || echo "휴지통이 비어 있습니다."
 	echo "------------------------"
@@ -7847,7 +8087,7 @@ linux_ldnmp() {
 	echo -e "${gl_huang}23.  ${gl_bai}사이트 역방향 프록시-IP+포트${gl_huang}★${gl_bai}            ${gl_huang}24.  ${gl_bai}사이트 역방향 프록시 도메인 이름"
 	echo -e "${gl_huang}25.  ${gl_bai}Bitwarden 비밀번호 관리 플랫폼 설치${gl_huang}26.  ${gl_bai}Halo 블로그 사이트 설치"
 	echo -e "${gl_huang}27.  ${gl_bai}AI 그림 프롬프트 단어 생성기 설치${gl_huang}28.  ${gl_bai}사이트 역방향 프록시-로드 밸런싱"
-	echo -e "${gl_huang}30.  ${gl_bai}사용자 정의 정적 사이트"
+	echo -e "${gl_huang}29.  ${gl_bai}스트림 4계층 프록시 전달${gl_huang}30.  ${gl_bai}사용자 정의 정적 사이트"
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}31.  ${gl_bai}사이트 데이터 관리${gl_huang}★${gl_bai}                    ${gl_huang}32.  ${gl_bai}사이트 전체 데이터 백업"
 	echo -e "${gl_huang}33.  ${gl_bai}예약된 원격 백업${gl_huang}34.  ${gl_bai}전체 사이트 데이터 복원"
@@ -8427,6 +8667,10 @@ linux_ldnmp() {
 		;;
 
 
+	  29)
+	  stream_panel
+		;;
+
 	  30)
 	  clear
 	  webname="静态站点"
@@ -8873,7 +9117,9 @@ while true; do
 	  echo -e "${gl_kjlan}99.  ${color99}DSM Synology 가상 컴퓨터${gl_kjlan}100. ${color100}P2P 파일 동기화 도구 동기화"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}101. ${color101}AI 영상 생성 도구${gl_kjlan}102. ${color102}VoceChat 다자간 온라인 채팅 시스템"
-	  echo -e "${gl_kjlan}103. ${color103}Umami 웹사이트 통계 도구"
+	  echo -e "${gl_kjlan}103. ${color103}Umami 웹사이트 통계 도구${gl_kjlan}104. ${color104}스트림 4계층 프록시 전달 도구"
+	  echo -e "${gl_kjlan}105. ${color105}쓰위안 노트${gl_kjlan}106. ${color106}Drawix 오픈 소스 화이트보드 도구"
+	  echo -e "${gl_kjlan}107. ${color107}PanSou 네트워크 디스크 검색"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}모든 애플리케이션 데이터 백업${gl_kjlan}r.   ${gl_bai}모든 앱 데이터 복원"
 	  echo -e "${gl_kjlan}------------------------"
@@ -10497,7 +10743,7 @@ while true; do
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env
 			# sed -i 's/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=${docker_port}/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/' /home/docker/dify/docker/.env
 			sed -i "s/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=${docker_port}/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/" /home/docker/dify/docker/.env
 
@@ -10536,7 +10782,7 @@ while true; do
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/Calcium-Ion/new-api.git && cd new-api
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/Calcium-Ion/new-api.git && cd new-api
 
 			sed -i -e "s/- \"3000:3000\"/- \"${docker_port}:3000\"/g" \
 				   -e 's/container_name: redis/container_name: redis-new-api/g' \
@@ -10653,7 +10899,7 @@ while true; do
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/infiniflow/ragflow.git && cd ragflow/docker
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/infiniflow/ragflow.git && cd ragflow/docker
 			sed -i "s/- 80:80/- ${docker_port}:80/; /- 443:443/d" docker-compose.yml
 			docker compose up -d
 			clear
@@ -11384,7 +11630,7 @@ while true; do
 		  local app_size="3"
 
 		  docker_app_install() {
-			  install git openssl
+			  install git openssl wget
 			  mkdir -p /home/docker/${docker_name} && cd /home/docker/${docker_name}
 
 			  wget -O docker-compose.yml ${gh_proxy}github.com/immich-app/immich/releases/latest/download/docker-compose.yml
@@ -12109,7 +12355,7 @@ while true; do
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/harry0703/MoneyPrinterTurbo.git && cd MoneyPrinterTurbo/
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/harry0703/MoneyPrinterTurbo.git && cd MoneyPrinterTurbo/
 			sed -i "s/8501:8501/${docker_port}:8501/g" /home/docker/MoneyPrinterTurbo/docker-compose.yml
 
 			docker compose up -d
@@ -12176,7 +12422,7 @@ while true; do
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/umami-software/umami.git && cd umami
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/umami-software/umami.git && cd umami
 			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/umami/docker-compose.yml
 
 			docker compose up -d
@@ -12204,6 +12450,107 @@ while true; do
 		docker_app_plus
 
 		  ;;
+
+	  104|nginx-stream)
+		stream_panel
+		  ;;
+
+
+	  105|siyuan)
+
+		local app_id="105"
+		local docker_name="siyuan"
+		local docker_img="b3log/siyuan"
+		local docker_port=8105
+
+		docker_rum() {
+
+			read -e -p "로그인 비밀번호 설정:" app_passwd
+
+			docker run -d \
+			  --name siyuan \
+			  --restart=always \
+			  -v /home/docker/siyuan/workspace:/siyuan/workspace \
+			  -p ${docker_port}:6806 \
+			  -e PUID=1001 \
+			  -e PGID=1002 \
+			  b3log/siyuan \
+			  --workspace=/siyuan/workspace/ \
+			  --accessAuthCode="${app_passwd}"
+
+		}
+
+		local docker_describe="思源笔记是一款隐私优先的知识管理系统"
+		local docker_url="官网介绍: https://github.com/siyuan-note/siyuan"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		  ;;
+
+
+	  106|drawnix)
+
+		local app_id="106"
+		local docker_name="drawnix"
+		local docker_img="pubuzhixing/drawnix"
+		local docker_port=8106
+
+		docker_rum() {
+
+			docker run -d \
+			   --restart=always  \
+			   --name drawnix \
+			   -p ${docker_port}:80 \
+			  pubuzhixing/drawnix
+
+		}
+
+		local docker_describe="是一款强大的开源白板工具，集成思维导图、流程图等。"
+		local docker_url="官网介绍: https://github.com/plait-board/drawnix"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		  ;;
+
+
+	  107|pansou)
+
+		local app_id="107"
+		local docker_name="pansou"
+		local docker_img="ghcr.io/fish2018/pansou-web"
+		local docker_port=8107
+
+		docker_rum() {
+
+			docker run -d \
+			  --name pansou \
+			  --restart=always \
+			  -p ${docker_port}:80 \
+			  -v /home/docker/pansou/data:/app/data \
+			  -v /home/docker/pansou/logs:/app/logs \
+			  -e ENABLED_PLUGINS="hunhepan,jikepan,panwiki,pansearch,panta,qupansou,
+susu,thepiratebay,wanou,xuexizhinan,panyq,zhizhen,labi,muou,ouge,shandian,
+duoduo,huban,cyg,erxiao,miaoso,fox4k,pianku,clmao,wuji,cldi,xiaozhang,
+libvio,leijing,xb6v,xys,ddys,hdmoli,yuhuage,u3c3,javdb,clxiong,jutoushe,
+sdso,xiaoji,xdyh,haisou,bixin,djgou,nyaa,xinjuc,aikanzy,qupanshe,xdpan,
+discourse,yunsou,ahhhhfs,nsgame,gying" \
+			  ghcr.io/fish2018/pansou-web
+
+		}
+
+		local docker_describe="PanSou是一个高性能的网盘资源搜索API服务。"
+		local docker_url="官网介绍: https://github.com/fish2018/pansou"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		  ;;
+
 
 
 
@@ -12412,7 +12759,7 @@ linux_work() {
 			  echo -e "SSH 상주 모드${tmux_sshd_status}"
 			  echo "SSH 연결을 연 후 바로 상주 모드로 들어가고 이전 작업 상태로 바로 돌아갑니다."
 			  echo "------------------------"
-			  echo "1. 켜기 2. 끄기"
+			  echo "1. 켜짐 2. 꺼짐"
 			  echo "------------------------"
 			  echo "0. 이전 메뉴로 돌아가기"
 			  echo "------------------------"
@@ -12741,10 +13088,7 @@ EOF
 
 				case $choice in
 					1)
-						grep -q '^precedence ::ffff:0:0/96  100' /etc/gai.conf 2>/dev/null \
-  							|| echo 'precedence ::ffff:0:0/96  100' >> /etc/gai.conf
-						echo "IPv4 우선순위로 전환됨"
-						send_stats "IPv4 우선순위로 전환됨"
+						prefer_ipv4
 						;;
 					2)
 						rm -f /etc/gai.conf
@@ -13574,20 +13918,7 @@ EOF
 				  echo -e "[${gl_lv}OK${gl_bai}] 7/10. 시간대를 다음으로 설정하세요.${gl_huang}상하이${gl_bai}"
 
 				  echo "------------------------------------------------"
-				  local country=$(curl -s ipinfo.io/country)
-				  if [ "$country" = "CN" ]; then
-					 local dns1_ipv4="223.5.5.5"
-					 local dns2_ipv4="183.60.83.19"
-					 local dns1_ipv6="2400:3200::1"
-					 local dns2_ipv6="2400:da00::6666"
-				  else
-					 local dns1_ipv4="1.1.1.1"
-					 local dns2_ipv4="8.8.8.8"
-					 local dns1_ipv6="2606:4700:4700::1111"
-					 local dns2_ipv6="2001:4860:4860::8888"
-				  fi
-
-				  set_dns
+				  auto_optimize_dns
 				  echo -e "[${gl_lv}OK${gl_bai}] 8/10. DNS 주소 자동 최적화${gl_huang}${gl_bai}"
 
 				  echo "------------------------------------------------"
@@ -14102,7 +14433,7 @@ echo "------------------------"
 echo -e "${gl_zi}V.PS 월 6.9달러 도쿄 소프트뱅크 2코어 1G 메모리 20G 하드드라이브 월 1T 트래픽${gl_bai}"
 echo -e "${gl_bai}URL: https://vps.hosting/cart/tokyo-cloud-kvm-vps/?id=148&?affid=1355&?affid=1355${gl_bai}"
 echo "------------------------"
-echo -e "${gl_kjlan}더 인기 있는 VPS 혜택${gl_bai}"
+echo -e "${gl_kjlan}더 인기 있는 VPS 거래${gl_bai}"
 echo -e "${gl_bai}홈페이지: https://kejilion.pro/topvps/${gl_bai}"
 echo "------------------------"
 echo ""
@@ -14324,13 +14655,14 @@ echo "LDNMP 캐시 정리 k 웹 캐시"
 echo "WordPress k wp 설치 | k 워드프레스 | k wp xxx.com"
 echo "역방향 프록시 설치 k fd |k rp |k 역방향 프록시 |k fd xxx.com"
 echo "로드 밸런싱 설치 k loadbalance |k 로드 밸런싱"
+echo "L4 로드 밸런싱 설치 k 스트림 |k L4 로드 밸런싱"
 echo "방화벽 패널 k fhq |k 방화벽"
 echo "포트 k 열기 DKdk 8080 |k 포트 8080 열기"
 echo "k 포트 닫기 gbdk 7800 |k 포트 7800 닫기"
 echo "릴리스 IP k fxip 127.0.0.0/8 |k 릴리스 IP 127.0.0.0/8"
 echo "IP 차단 k zzip 177.5.25.36 |k IP 177.5.25.36 차단"
 echo "명령 즐겨찾기 k 즐겨찾기 | k 명령 즐겨찾기"
-echo "애플리케이션 시장 관리 k app"
+echo "애플리케이션 시장관리 kapp"
 echo "신청번호의 빠른 관리 k app 26 | k 앱 1패널 | k 앱 npm"
 echo "시스템 정보 표시 k 정보"
 }
@@ -14412,6 +14744,11 @@ else
 
 		loadbalance|负载均衡)
 			ldnmp_Proxy_backend
+			;;
+
+
+		stream|L4负载均衡)
+			ldnmp_Proxy_backend_stream
 			;;
 
 		swap)

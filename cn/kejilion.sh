@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.1.9"
+sh_v="4.2.2"
 
 
 gl_hui='\e[37m'
@@ -216,6 +216,8 @@ check_disk_space() {
 	local required_gb=$1
 	local path=${2:-/}
 
+	mkdir -p "$path"
+
 	local required_space_mb=$((required_gb * 1024))
 	local available_space_mb=$(df -m "$path" | awk 'NR==2 {print $4}')
 
@@ -234,6 +236,11 @@ check_disk_space() {
 
 install_dependency() {
 	install wget unzip tar jq grep
+
+	check_swap
+	auto_optimize_dns
+	prefer_ipv4
+
 }
 
 remove() {
@@ -379,23 +386,23 @@ if [ "$country" = "CN" ]; then
 	cat > /etc/docker/daemon.json << EOF
 {
   "registry-mirrors": [
-	"https://docker-0.unsee.tech",
-	"https://docker.1panel.live",
-	"https://registry.dockermirror.com",
-	"https://docker.imgdb.de",
-	"https://docker.m.daocloud.io",
-	"https://hub.firefly.store",
-	"https://hub.littlediary.cn",
+	"https://docker.1ms.run",
+	"https://docker.m.ixdev.cn",
 	"https://hub.rat.dev",
-	"https://dhub.kubesre.xyz",
-	"https://cjie.eu.org",
-	"https://docker.1panelproxy.com",
+	"https://dockerproxy.net",
+	"https://docker-registry.nmqu.com",
+	"https://docker.amingg.com",
 	"https://docker.hlmirror.com",
-	"https://hub.fast360.xyz",
-	"https://dockerpull.cn",
-	"https://cr.laoyou.ip-ddns.com",
-	"https://docker.melikeme.cn",
-	"https://docker.kejilion.pro"
+	"https://hub1.nat.tf",
+	"https://hub2.nat.tf",
+	"https://hub3.nat.tf",
+	"https://docker.m.daocloud.io",
+	"https://docker.kejilion.pro",
+	"https://docker.367231.xyz",
+	"https://hub.1panel.dev",
+	"https://dockerproxy.cool",
+	"https://docker.apiba.cn",
+	"https://proxy.vvvv.ee"
   ]
 }
 EOF
@@ -1335,11 +1342,9 @@ ldnmp_v() {
 install_ldnmp_conf() {
 
   # 创建必要的目录和文件
-  cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis web/log/nginx && touch web/docker-compose.yml
+  cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/stream.d web/redis web/log/nginx && touch web/docker-compose.yml
   wget -O /home/web/nginx.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
   wget -O /home/web/conf.d/default.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/default10.conf
-  wget -O /home/web/redis/valkey.conf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/valkey.conf
-
 
   default_server_ssl
 
@@ -1355,31 +1360,70 @@ install_ldnmp_conf() {
 }
 
 
+update_docker_compose_with_db_creds() {
+
+  cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
+
+  if ! grep -q "stream" /home/web/docker-compose.yml; then
+	wget -O /home/web/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml
+
+  	dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
+  	dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
+  	dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
+
+	sed -i "s#webroot#$dbrootpasswd#g" /home/web/docker-compose.yml
+	sed -i "s#kejilionYYDS#$dbusepasswd#g" /home/web/docker-compose.yml
+	sed -i "s#kejilion#$dbuse#g" /home/web/docker-compose.yml
+  fi
+
+  if grep -q "kjlion/nginx:alpine" /home/web/docker-compose1.yml; then
+  	sed -i 's|kjlion/nginx:alpine|nginx:alpine|g' /home/web/docker-compose.yml  > /dev/null 2>&1
+	sed -i 's|nginx:alpine|kjlion/nginx:alpine|g' /home/web/docker-compose.yml  > /dev/null 2>&1
+  fi
+
+}
+
+
+
+
+
+auto_optimize_dns() {
+	# 获取国家代码（如 CN、US 等）
+	local country=$(curl -s ipinfo.io/country)
+
+	# 根据国家设置 DNS
+	if [ "$country" = "CN" ]; then
+		local dns1_ipv4="223.5.5.5"
+		local dns2_ipv4="183.60.83.19"
+		local dns1_ipv6="2400:3200::1"
+		local dns2_ipv6="2400:da00::6666"
+	else
+		local dns1_ipv4="1.1.1.1"
+		local dns2_ipv4="8.8.8.8"
+		local dns1_ipv6="2606:4700:4700::1111"
+		local dns2_ipv6="2001:4860:4860::8888"
+	fi
+
+	# 调用设置 DNS 的函数（需你定义）
+	set_dns "$dns1_ipv4" "$dns2_ipv4" "$dns1_ipv6" "$dns2_ipv6"
+
+
+}
+
+
+prefer_ipv4() {
+grep -q '^precedence ::ffff:0:0/96  100' /etc/gai.conf 2>/dev/null \
+	|| echo 'precedence ::ffff:0:0/96  100' >> /etc/gai.conf
+echo "已切换为 IPv4 优先"
+send_stats "已切换为 IPv4 优先"
+}
+
 
 
 
 install_ldnmp() {
 
-	  check_swap
-
-	  cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
-
-	  if ! grep -q "network_mode" /home/web/docker-compose.yml; then
-		wget -O /home/web/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml
-	  	dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
-	  	dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
-	  	dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
-
-  		sed -i "s#webroot#$dbrootpasswd#g" /home/web/docker-compose.yml
-  		sed -i "s#kejilionYYDS#$dbusepasswd#g" /home/web/docker-compose.yml
-  		sed -i "s#kejilion#$dbuse#g" /home/web/docker-compose.yml
-
-	  fi
-
-	  if grep -q "kjlion/nginx:alpine" /home/web/docker-compose1.yml; then
-	  	sed -i 's|kjlion/nginx:alpine|nginx:alpine|g' /home/web/docker-compose.yml  > /dev/null 2>&1
-		sed -i 's|nginx:alpine|kjlion/nginx:alpine|g' /home/web/docker-compose.yml  > /dev/null 2>&1
-	  fi
+	  update_docker_compose_with_db_creds
 
 	  cd /home/web && docker compose up -d
 	  sleep 1
@@ -2244,9 +2288,11 @@ web_optimization() {
 				  1)
 				  send_stats "站点标准模式"
 
-				  # nginx调优
-				  sed -i 's/worker_connections.*/worker_connections 10240;/' /home/web/nginx.conf
-				  sed -i 's/worker_processes.*/worker_processes 4;/' /home/web/nginx.conf
+				  local cpu_cores=$(nproc)
+				  local connections=$((1024 * ${cpu_cores}))
+				  sed -i "s/worker_processes.*/worker_processes ${cpu_cores};/" /home/web/nginx.conf
+				  sed -i "s/worker_connections.*/worker_connections ${connections};/" /home/web/nginx.conf
+
 
 				  # php调优
 				  wget -O /home/optimized_php.ini ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
@@ -2285,8 +2331,10 @@ web_optimization() {
 				  send_stats "站点高性能模式"
 
 				  # nginx调优
-				  sed -i 's/worker_connections.*/worker_connections 20480;/' /home/web/nginx.conf
-				  sed -i 's/worker_processes.*/worker_processes 8;/' /home/web/nginx.conf
+				  local cpu_cores=$(nproc)
+				  local connections=$((2048 * ${cpu_cores}))
+				  sed -i "s/worker_processes.*/worker_processes ${cpu_cores};/" /home/web/nginx.conf
+				  sed -i "s/worker_connections.*/worker_connections ${connections};/" /home/web/nginx.conf
 
 				  # php调优
 				  wget -O /home/optimized_php.ini ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
@@ -3227,7 +3275,7 @@ ldnmp_wp() {
   wget -O latest.zip ${gh_proxy}github.com/kejilion/Website_source_code/raw/refs/heads/main/wp-latest.zip
   unzip latest.zip
   rm latest.zip
-  echo "define('FS_METHOD', 'direct'); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379');" >> /home/web/html/$yuming/wordpress/wp-config-sample.php
+  echo "define('FS_METHOD', 'direct'); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379'); define('WP_REDIS_MAXTTL', 86400); define('WP_CACHE_KEY_SALT', '${yuming}_');" >> /home/web/html/$yuming/wordpress/wp-config-sample.php
   sed -i "s|database_name_here|$dbname|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
   sed -i "s|username_here|$dbuse|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
   sed -i "s|password_here|$dbusepasswd|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
@@ -3277,8 +3325,6 @@ ldnmp_Proxy() {
 ldnmp_Proxy_backend() {
 	clear
 	webname="反向代理-负载均衡"
-	yuming="${1:-}"
-	reverseproxy_port="${2:-}"
 
 	send_stats "安装$webname"
 	echo "开始部署 $webname"
@@ -3313,6 +3359,200 @@ ldnmp_Proxy_backend() {
 	docker exec nginx nginx -s reload
 	nginx_web_on
 }
+
+
+
+
+
+
+list_stream_services() {
+
+	STREAM_DIR="/home/web/stream.d"
+	printf "%-25s %-18s %-25s %-20s\n" "服务名" "通信类型" "本机地址" "后端地址"
+
+	if [ -z "$(ls -A "$STREAM_DIR")" ]; then
+		return
+	fi
+
+	for conf in "$STREAM_DIR"/*; do
+		# 服务名取文件名
+		service_name=$(basename "$conf" .conf)
+
+		# 获取 upstream 块中的 server 后端 IP:端口
+		backend=$(grep -Po '(?<=server )[^;]+' "$conf" | head -n1)
+
+		# 获取 listen 端口
+		listen_port=$(grep -Po '(?<=listen )[^;]+' "$conf" | head -n1)
+
+		# 默认本地 IP
+		ip_address
+		local_ip="$ipv4_address"
+
+		# 获取通信类型，优先从文件名后缀或内容判断
+		if grep -qi 'udp;' "$conf"; then
+			proto="udp"
+		else
+			proto="tcp"
+		fi
+
+		# 拼接监听 IP:端口
+		local_addr="$local_ip:$listen_port"
+
+		printf "%-22s %-14s %-21s %-20s\n" "$service_name" "$proto" "$local_addr" "$backend"
+	done
+}
+
+
+
+
+
+
+
+
+
+stream_panel() {
+	send_stats "Stream四层代理"
+	local app_id="104"
+	local docker_name="nginx"
+
+	while true; do
+		clear
+		check_docker_app
+		check_docker_image_update $docker_name
+		echo -e "Stream四层代理转发工具 $check_docker $update_status"
+		echo "NGINX Stream 是 NGINX 的 TCP/UDP 代理模块，用于实现高性能的 传输层流量转发和负载均衡。"
+		echo "------------------------"
+		if [ -d "/home/web/stream.d" ]; then
+			list_stream_services
+		fi
+		echo ""
+		echo "------------------------"
+		echo "1. 安装               2. 更新               3. 卸载"
+		echo "------------------------"
+		echo "4. 添加转发服务       5. 修改转发服务       6. 删除转发服务"
+		echo "------------------------"
+		echo "0. 返回上一级选单"
+		echo "------------------------"
+		read -e -p "输入你的选择: " choice
+		case $choice in
+			1)
+				nginx_install_status
+				add_app_id
+				send_stats "安装Stream四层代理"
+				;;
+			2)
+				update_docker_compose_with_db_creds
+				nginx_upgrade
+				add_app_id
+				send_stats "更新Stream四层代理"
+				;;
+			3)
+				read -e -p "确定要删除 nginx 容器吗？这可能会影响网站功能！(y/N): " confirm
+				if [[ "$confirm" =~ ^[Yy]$ ]]; then
+					docker rm -f nginx
+					sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+					send_stats "更新Stream四层代理"
+					echo "nginx 容器已删除。"
+				else
+					echo "操作已取消。"
+				fi
+
+				;;
+
+			4)
+				ldnmp_Proxy_backend_stream
+				add_app_id
+				send_stats "添加四层代理"
+				;;
+			5)
+				send_stats "编辑转发配置"
+				read -e -p "请输入你要编辑的服务名: " stream_name
+				install nano
+				nano /home/web/stream.d/$stream_name.conf
+				docker restart nginx
+				send_stats "修改四层代理"
+				;;
+			6)
+				send_stats "删除转发配置"
+				read -e -p "请输入你要删除的服务名: " stream_name
+				rm /home/web/stream.d/$stream_name.conf > /dev/null 2>&1
+				docker restart nginx
+				send_stats "删除四层代理"
+				;;
+			*)
+				break
+				;;
+		esac
+		break_end
+	done
+}
+
+
+
+ldnmp_Proxy_backend_stream() {
+	clear
+	webname="Stream四层代理-负载均衡"
+
+	send_stats "安装$webname"
+	echo "开始部署 $webname"
+
+	# 获取代理名称
+	read -rp "请输入代理转发名称 (如 mysql_proxy): " proxy_name
+	if [ -z "$proxy_name" ]; then
+		echo "名称不能为空"; return 1
+	fi
+
+	# 获取监听端口
+	read -rp "请输入本机监听端口 (如 3306): " listen_port
+	if ! [[ "$listen_port" =~ ^[0-9]+$ ]]; then
+		echo "端口必须是数字"; return 1
+	fi
+
+	echo "请选择协议类型："
+	echo "1. TCP    2. UDP"
+	read -rp "请输入序号 [1-2]: " proto_choice
+
+	case "$proto_choice" in
+		1) proto="tcp"; listen_suffix="" ;;
+		2) proto="udp"; listen_suffix=" udp" ;;
+		*) echo "无效选择"; return 1 ;;
+	esac
+
+	read -e -p "请输入你的一个或者多个后端IP+端口用空格隔开（例如 10.13.0.2:3306 10.13.0.3:3306）： " reverseproxy_port
+
+	nginx_install_status
+	cd /home && mkdir -p web/stream.d
+	grep -q '^[[:space:]]*stream[[:space:]]*{' /home/web/nginx.conf || echo -e '\nstream {\n    include /etc/nginx/stream.d/*.conf;\n}' | tee -a /home/web/nginx.conf
+	wget -O /home/web/stream.d/$proxy_name.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend-stream.conf
+
+	backend=$(tr -dc 'A-Za-z' < /dev/urandom | head -c 8)
+	sed -i "s/backend_yuming_com/${proxy_name}_${backend}/g" /home/web/stream.d/"$proxy_name".conf
+	sed -i "s|listen 80|listen $listen_port $listen_suffix|g" /home/web/stream.d/$proxy_name.conf
+	sed -i "s|listen \[::\]:|listen [::]:${listen_port} ${listen_suffix}|g" "/home/web/stream.d/${proxy_name}.conf"
+
+	upstream_servers=""
+	for server in $reverseproxy_port; do
+		upstream_servers="$upstream_servers    server $server;\n"
+	done
+
+	sed -i "s/# 动态添加/$upstream_servers/g" /home/web/stream.d/$proxy_name.conf
+
+	docker exec nginx nginx -s reload
+	clear
+	echo "您的 $webname 搭建好了！"
+	echo "------------------------"
+	echo "访问地址:"
+	ip_address
+	if [ -n "$ipv4_address" ]; then
+		echo "$ipv4_address:${listen_port}"
+	fi
+	if [ -n "$ipv6_address" ]; then
+		echo "$ipv6_address:${listen_port}"
+	fi
+	echo ""
+}
+
+
 
 
 
@@ -7847,7 +8087,7 @@ linux_ldnmp() {
 	echo -e "${gl_huang}23.  ${gl_bai}站点反向代理-IP+端口 ${gl_huang}★${gl_bai}            ${gl_huang}24.  ${gl_bai}站点反向代理-域名"
 	echo -e "${gl_huang}25.  ${gl_bai}安装Bitwarden密码管理平台         ${gl_huang}26.  ${gl_bai}安装Halo博客网站"
 	echo -e "${gl_huang}27.  ${gl_bai}安装AI绘画提示词生成器            ${gl_huang}28.  ${gl_bai}站点反向代理-负载均衡"
-	echo -e "${gl_huang}30.  ${gl_bai}自定义静态站点"
+	echo -e "${gl_huang}29.  ${gl_bai}Stream四层代理转发                ${gl_huang}30.  ${gl_bai}自定义静态站点"
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}31.  ${gl_bai}站点数据管理 ${gl_huang}★${gl_bai}                    ${gl_huang}32.  ${gl_bai}备份全站数据"
 	echo -e "${gl_huang}33.  ${gl_bai}定时远程备份                      ${gl_huang}34.  ${gl_bai}还原全站数据"
@@ -8427,6 +8667,10 @@ linux_ldnmp() {
 		;;
 
 
+	  29)
+	  stream_panel
+		;;
+
 	  30)
 	  clear
 	  webname="静态站点"
@@ -8873,7 +9117,9 @@ while true; do
 	  echo -e "${gl_kjlan}99.  ${color99}DSM群晖虚拟机                       ${gl_kjlan}100. ${color100}Syncthing点对点文件同步工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}101. ${color101}AI视频生成工具                      ${gl_kjlan}102. ${color102}VoceChat多人在线聊天系统"
-	  echo -e "${gl_kjlan}103. ${color103}Umami网站统计工具"
+	  echo -e "${gl_kjlan}103. ${color103}Umami网站统计工具                   ${gl_kjlan}104. ${color104}Stream四层代理转发工具"
+	  echo -e "${gl_kjlan}105. ${color105}思源笔记                            ${gl_kjlan}106. ${color106}Drawnix开源白板工具"
+	  echo -e "${gl_kjlan}107. ${color107}PanSou网盘搜索                      ${gl_kjlan}108. ${color108}LangBot聊天机器人"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${gl_bai}还原全部应用数据"
 	  echo -e "${gl_kjlan}------------------------"
@@ -10497,7 +10743,7 @@ while true; do
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env
 			# sed -i 's/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=${docker_port}/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/' /home/docker/dify/docker/.env
 			sed -i "s/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=${docker_port}/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/" /home/docker/dify/docker/.env
 
@@ -10536,7 +10782,7 @@ while true; do
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/Calcium-Ion/new-api.git && cd new-api
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/Calcium-Ion/new-api.git && cd new-api
 
 			sed -i -e "s/- \"3000:3000\"/- \"${docker_port}:3000\"/g" \
 				   -e 's/container_name: redis/container_name: redis-new-api/g' \
@@ -10653,7 +10899,7 @@ while true; do
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/infiniflow/ragflow.git && cd ragflow/docker
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/infiniflow/ragflow.git && cd ragflow/docker
 			sed -i "s/- 80:80/- ${docker_port}:80/; /- 443:443/d" docker-compose.yml
 			docker compose up -d
 			clear
@@ -11384,7 +11630,7 @@ while true; do
 		  local app_size="3"
 
 		  docker_app_install() {
-			  install git openssl
+			  install git openssl wget
 			  mkdir -p /home/docker/${docker_name} && cd /home/docker/${docker_name}
 
 			  wget -O docker-compose.yml ${gh_proxy}github.com/immich-app/immich/releases/latest/download/docker-compose.yml
@@ -12109,7 +12355,7 @@ while true; do
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/harry0703/MoneyPrinterTurbo.git && cd MoneyPrinterTurbo/
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/harry0703/MoneyPrinterTurbo.git && cd MoneyPrinterTurbo/
 			sed -i "s/8501:8501/${docker_port}:8501/g" /home/docker/MoneyPrinterTurbo/docker-compose.yml
 
 			docker compose up -d
@@ -12176,7 +12422,7 @@ while true; do
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/umami-software/umami.git && cd umami
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/umami-software/umami.git && cd umami
 			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/umami/docker-compose.yml
 
 			docker compose up -d
@@ -12204,6 +12450,148 @@ while true; do
 		docker_app_plus
 
 		  ;;
+
+	  104|nginx-stream)
+		stream_panel
+		  ;;
+
+
+	  105|siyuan)
+
+		local app_id="105"
+		local docker_name="siyuan"
+		local docker_img="b3log/siyuan"
+		local docker_port=8105
+
+		docker_rum() {
+
+			read -e -p "设置登录密码: " app_passwd
+
+			docker run -d \
+			  --name siyuan \
+			  --restart=always \
+			  -v /home/docker/siyuan/workspace:/siyuan/workspace \
+			  -p ${docker_port}:6806 \
+			  -e PUID=1001 \
+			  -e PGID=1002 \
+			  b3log/siyuan \
+			  --workspace=/siyuan/workspace/ \
+			  --accessAuthCode="${app_passwd}"
+
+		}
+
+		local docker_describe="思源笔记是一款隐私优先的知识管理系统"
+		local docker_url="官网介绍: https://github.com/siyuan-note/siyuan"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		  ;;
+
+
+	  106|drawnix)
+
+		local app_id="106"
+		local docker_name="drawnix"
+		local docker_img="pubuzhixing/drawnix"
+		local docker_port=8106
+
+		docker_rum() {
+
+			docker run -d \
+			   --restart=always  \
+			   --name drawnix \
+			   -p ${docker_port}:80 \
+			  pubuzhixing/drawnix
+
+		}
+
+		local docker_describe="是一款强大的开源白板工具，集成思维导图、流程图等。"
+		local docker_url="官网介绍: https://github.com/plait-board/drawnix"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		  ;;
+
+
+	  107|pansou)
+
+		local app_id="107"
+		local docker_name="pansou"
+		local docker_img="ghcr.io/fish2018/pansou-web"
+		local docker_port=8107
+
+		docker_rum() {
+
+			docker run -d \
+			  --name pansou \
+			  --restart=always \
+			  -p ${docker_port}:80 \
+			  -v /home/docker/pansou/data:/app/data \
+			  -v /home/docker/pansou/logs:/app/logs \
+			  -e ENABLED_PLUGINS="hunhepan,jikepan,panwiki,pansearch,panta,qupansou,
+susu,thepiratebay,wanou,xuexizhinan,panyq,zhizhen,labi,muou,ouge,shandian,
+duoduo,huban,cyg,erxiao,miaoso,fox4k,pianku,clmao,wuji,cldi,xiaozhang,
+libvio,leijing,xb6v,xys,ddys,hdmoli,yuhuage,u3c3,javdb,clxiong,jutoushe,
+sdso,xiaoji,xdyh,haisou,bixin,djgou,nyaa,xinjuc,aikanzy,qupanshe,xdpan,
+discourse,yunsou,ahhhhfs,nsgame,gying" \
+			  ghcr.io/fish2018/pansou-web
+
+		}
+
+		local docker_describe="PanSou是一个高性能的网盘资源搜索API服务。"
+		local docker_url="官网介绍: https://github.com/fish2018/pansou"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		  ;;
+
+
+
+
+	  108|langbot)
+		local app_id="108"
+		local app_name="LangBot聊天机器人"
+		local app_text="是一个开源的大语言模型原生即时通信机器人开发平台"
+		local app_url="官方网站: https://github.com/langbot-app/LangBot"
+		local docker_name="langbot_plugin_runtime"
+		local docker_port="8108"
+		local app_size="1"
+
+		docker_app_install() {
+			install git
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/langbot-app/LangBot && cd LangBot/docker
+			sed -i "s/5300:5300/${docker_port}:5300/g" /home/docker/LangBot/docker/docker-compose.yaml
+
+			docker compose up -d
+			clear
+			echo "已经安装完成"
+			check_docker_app_ip
+		}
+
+		docker_app_update() {
+			cd  /home/docker/LangBot/docker && docker compose down --rmi all
+			cd  /home/docker/LangBot/
+			git pull origin main
+			sed -i "s/5300:5300/${docker_port}:5300/g" /home/docker/LangBot/docker/docker-compose.yaml
+			cd  /home/docker/LangBot/docker/ && docker compose up -d
+		}
+
+		docker_app_uninstall() {
+			cd  /home/docker/LangBot/docker/ && docker compose down --rmi all
+			rm -rf /home/docker/LangBot
+			echo "应用已卸载"
+		}
+
+		docker_app_plus
+
+		  ;;
+
 
 
 
@@ -12741,10 +13129,7 @@ EOF
 
 				case $choice in
 					1)
-						grep -q '^precedence ::ffff:0:0/96  100' /etc/gai.conf 2>/dev/null \
-  							|| echo 'precedence ::ffff:0:0/96  100' >> /etc/gai.conf
-						echo "已切换为 IPv4 优先"
-						send_stats "已切换为 IPv4 优先"
+						prefer_ipv4
 						;;
 					2)
 						rm -f /etc/gai.conf
@@ -13237,7 +13622,6 @@ EOF
 				case $sub_choice in
 					1)
 						f2b_install_sshd
-
 						cd ~
 						f2b_status
 						break_end
@@ -13533,12 +13917,14 @@ EOF
 			  echo "2. 清理系统垃圾文件"
 			  echo -e "3. 设置虚拟内存${gl_huang}1G${gl_bai}"
 			  echo -e "4. 设置SSH端口号为${gl_huang}5522${gl_bai}"
-			  echo -e "5. 开放所有端口"
-			  echo -e "6. 开启${gl_huang}BBR${gl_bai}加速"
-			  echo -e "7. 设置时区到${gl_huang}上海${gl_bai}"
-			  echo -e "8. 自动优化DNS地址${gl_huang}海外: 1.1.1.1 8.8.8.8  国内: 223.5.5.5 ${gl_bai}"
-			  echo -e "9. 安装基础工具${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}"
-			  echo -e "10. Linux系统内核参数优化切换到${gl_huang}均衡优化模式${gl_bai}"
+			  echo -e "5. 启动fail2ban防御SSH暴力破解"
+			  echo -e "6. 开放所有端口"
+			  echo -e "7. 开启${gl_huang}BBR${gl_bai}加速"
+			  echo -e "8. 设置时区到${gl_huang}上海${gl_bai}"
+			  echo -e "9. 自动优化DNS地址${gl_huang}海外: 1.1.1.1 8.8.8.8  国内: 223.5.5.5 ${gl_bai}"
+		  	  echo -e "10. 设置网络为${gl_huang}ipv4优先${gl_bai}"
+			  echo -e "11. 安装基础工具${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}"
+			  echo -e "12. Linux系统内核参数优化切换到${gl_huang}均衡优化模式${gl_bai}"
 			  echo "------------------------------------------------"
 			  read -e -p "确定一键保养吗？(Y/N): " choice
 
@@ -13548,57 +13934,52 @@ EOF
 				  send_stats "一条龙调优启动"
 				  echo "------------------------------------------------"
 				  linux_update
-				  echo -e "[${gl_lv}OK${gl_bai}] 1/10. 更新系统到最新"
+				  echo -e "[${gl_lv}OK${gl_bai}] 1/12. 更新系统到最新"
 
 				  echo "------------------------------------------------"
 				  linux_clean
-				  echo -e "[${gl_lv}OK${gl_bai}] 2/10. 清理系统垃圾文件"
+				  echo -e "[${gl_lv}OK${gl_bai}] 2/12. 清理系统垃圾文件"
 
 				  echo "------------------------------------------------"
 				  add_swap 1024
-				  echo -e "[${gl_lv}OK${gl_bai}] 3/10. 设置虚拟内存${gl_huang}1G${gl_bai}"
+				  echo -e "[${gl_lv}OK${gl_bai}] 3/12. 设置虚拟内存${gl_huang}1G${gl_bai}"
 
 				  echo "------------------------------------------------"
 				  local new_port=5522
 				  new_ssh_port
-				  echo -e "[${gl_lv}OK${gl_bai}] 4/10. 设置SSH端口号为${gl_huang}5522${gl_bai}"
+				  echo -e "[${gl_lv}OK${gl_bai}] 4/12. 设置SSH端口号为${gl_huang}5522${gl_bai}"
 				  echo "------------------------------------------------"
-				  echo -e "[${gl_lv}OK${gl_bai}] 5/10. 开放所有端口"
+				  f2b_install_sshd
+				  cd ~
+				  f2b_status
+				  echo -e "[${gl_lv}OK${gl_bai}] 5/12. 启动fail2ban防御SSH暴力破解"
+
+				  echo "------------------------------------------------"
+				  echo -e "[${gl_lv}OK${gl_bai}] 6/12. 开放所有端口"
 
 				  echo "------------------------------------------------"
 				  bbr_on
-				  echo -e "[${gl_lv}OK${gl_bai}] 6/10. 开启${gl_huang}BBR${gl_bai}加速"
+				  echo -e "[${gl_lv}OK${gl_bai}] 7/12. 开启${gl_huang}BBR${gl_bai}加速"
 
 				  echo "------------------------------------------------"
 				  set_timedate Asia/Shanghai
-				  echo -e "[${gl_lv}OK${gl_bai}] 7/10. 设置时区到${gl_huang}上海${gl_bai}"
+				  echo -e "[${gl_lv}OK${gl_bai}] 8/12. 设置时区到${gl_huang}上海${gl_bai}"
 
 				  echo "------------------------------------------------"
-				  local country=$(curl -s ipinfo.io/country)
-				  if [ "$country" = "CN" ]; then
-					 local dns1_ipv4="223.5.5.5"
-					 local dns2_ipv4="183.60.83.19"
-					 local dns1_ipv6="2400:3200::1"
-					 local dns2_ipv6="2400:da00::6666"
-				  else
-					 local dns1_ipv4="1.1.1.1"
-					 local dns2_ipv4="8.8.8.8"
-					 local dns1_ipv6="2606:4700:4700::1111"
-					 local dns2_ipv6="2001:4860:4860::8888"
-				  fi
-
-				  set_dns
-				  echo -e "[${gl_lv}OK${gl_bai}] 8/10. 自动优化DNS地址${gl_huang}${gl_bai}"
+				  auto_optimize_dns
+				  echo -e "[${gl_lv}OK${gl_bai}] 9/12. 自动优化DNS地址${gl_huang}${gl_bai}"
+				  echo "------------------------------------------------"
+				  prefer_ipv4
+				  echo -e "[${gl_lv}OK${gl_bai}] 10/12. 设置网络为${gl_huang}ipv4优先${gl_bai}}"
 
 				  echo "------------------------------------------------"
 				  install_docker
 				  install wget sudo tar unzip socat btop nano vim
-				  echo -e "[${gl_lv}OK${gl_bai}] 9/10. 安装基础工具${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}"
+				  echo -e "[${gl_lv}OK${gl_bai}] 11/12. 安装基础工具${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}"
 				  echo "------------------------------------------------"
 
-				  echo "------------------------------------------------"
 				  optimize_balanced
-				  echo -e "[${gl_lv}OK${gl_bai}] 10/10. Linux系统内核参数优化"
+				  echo -e "[${gl_lv}OK${gl_bai}] 12/12. Linux系统内核参数优化"
 				  echo -e "${gl_lv}一条龙系统调优已完成${gl_bai}"
 
 				  ;;
@@ -14324,6 +14705,7 @@ echo "LDNMP缓存清理       k web cache"
 echo "安装WordPress       k wp |k wordpress |k wp xxx.com"
 echo "安装反向代理        k fd |k rp |k 反代 |k fd xxx.com"
 echo "安装负载均衡        k loadbalance |k 负载均衡"
+echo "安装L4负载均衡      k stream |k L4负载均衡"
 echo "防火墙面板          k fhq |k 防火墙"
 echo "开放端口            k dkdk 8080 |k 打开端口 8080"
 echo "关闭端口            k gbdk 7800 |k 关闭端口 7800"
@@ -14412,6 +14794,11 @@ else
 
 		loadbalance|负载均衡)
 			ldnmp_Proxy_backend
+			;;
+
+
+		stream|L4负载均衡)
+			ldnmp_Proxy_backend_stream
 			;;
 
 		swap)

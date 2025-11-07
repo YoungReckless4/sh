@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.1.9"
+sh_v="4.2.1"
 
 
 gl_hui='\e[37m'
@@ -216,6 +216,8 @@ check_disk_space() {
 	local required_gb=$1
 	local path=${2:-/}
 
+	mkdir -p "$path"
+
 	local required_space_mb=$((required_gb * 1024))
 	local available_space_mb=$(df -m "$path" | awk 'NR==2 {print $4}')
 
@@ -234,6 +236,11 @@ check_disk_space() {
 
 install_dependency() {
 	install wget unzip tar jq grep
+
+	check_swap
+	auto_optimize_dns
+	prefer_ipv4
+
 }
 
 remove() {
@@ -379,23 +386,23 @@ if [ "$country" = "CN" ]; then
 	cat > /etc/docker/daemon.json << EOF
 {
   "registry-mirrors": [
-	"https://docker-0.unsee.tech",
-	"https://docker.1panel.live",
-	"https://registry.dockermirror.com",
-	"https://docker.imgdb.de",
-	"https://docker.m.daocloud.io",
-	"https://hub.firefly.store",
-	"https://hub.littlediary.cn",
+	"https://docker.1ms.run",
+	"https://docker.m.ixdev.cn",
 	"https://hub.rat.dev",
-	"https://dhub.kubesre.xyz",
-	"https://cjie.eu.org",
-	"https://docker.1panelproxy.com",
+	"https://dockerproxy.net",
+	"https://docker-registry.nmqu.com",
+	"https://docker.amingg.com",
 	"https://docker.hlmirror.com",
-	"https://hub.fast360.xyz",
-	"https://dockerpull.cn",
-	"https://cr.laoyou.ip-ddns.com",
-	"https://docker.melikeme.cn",
-	"https://docker.kejilion.pro"
+	"https://hub1.nat.tf",
+	"https://hub2.nat.tf",
+	"https://hub3.nat.tf",
+	"https://docker.m.daocloud.io",
+	"https://docker.kejilion.pro",
+	"https://docker.367231.xyz",
+	"https://hub.1panel.dev",
+	"https://dockerproxy.cool",
+	"https://docker.apiba.cn",
+	"https://proxy.vvvv.ee"
   ]
 }
 EOF
@@ -890,7 +897,7 @@ open_port() {
 
 		if ! iptables -C INPUT -p udp --dport $port -j ACCEPT 2>/dev/null; then
 			iptables -I INPUT 1 -p udp --dport $port -j ACCEPT
-			echo "ポートがオープンされました$port"
+			echo "ポートがオープンしました$port"
 		fi
 	done
 
@@ -1335,11 +1342,9 @@ ldnmp_v() {
 install_ldnmp_conf() {
 
   # 必要なディレクトリとファイルを作成する
-  cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis web/log/nginx && touch web/docker-compose.yml
+  cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/stream.d web/redis web/log/nginx && touch web/docker-compose.yml
   wget -O /home/web/nginx.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
   wget -O /home/web/conf.d/default.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/default10.conf
-  wget -O /home/web/redis/valkey.conf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/valkey.conf
-
 
   default_server_ssl
 
@@ -1355,31 +1360,70 @@ install_ldnmp_conf() {
 }
 
 
+update_docker_compose_with_db_creds() {
+
+  cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
+
+  if ! grep -q "stream" /home/web/docker-compose.yml; then
+	wget -O /home/web/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml
+
+  	dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
+  	dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
+  	dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
+
+	sed -i "s#webroot#$dbrootpasswd#g" /home/web/docker-compose.yml
+	sed -i "s#kejilionYYDS#$dbusepasswd#g" /home/web/docker-compose.yml
+	sed -i "s#kejilion#$dbuse#g" /home/web/docker-compose.yml
+  fi
+
+  if grep -q "kjlion/nginx:alpine" /home/web/docker-compose1.yml; then
+  	sed -i 's|kjlion/nginx:alpine|nginx:alpine|g' /home/web/docker-compose.yml  > /dev/null 2>&1
+	sed -i 's|nginx:alpine|kjlion/nginx:alpine|g' /home/web/docker-compose.yml  > /dev/null 2>&1
+  fi
+
+}
+
+
+
+
+
+auto_optimize_dns() {
+	# 国コードを取得します (CN、US など)。
+	local country=$(curl -s ipinfo.io/country)
+
+	# 国に基づいてDNSを設定する
+	if [ "$country" = "CN" ]; then
+		local dns1_ipv4="223.5.5.5"
+		local dns2_ipv4="183.60.83.19"
+		local dns1_ipv6="2400:3200::1"
+		local dns2_ipv6="2400:da00::6666"
+	else
+		local dns1_ipv4="1.1.1.1"
+		local dns2_ipv4="8.8.8.8"
+		local dns1_ipv6="2606:4700:4700::1111"
+		local dns2_ipv6="2001:4860:4860::8888"
+	fi
+
+	# DNS を設定する関数を呼び出します (ユーザーが定義する必要があります)
+	set_dns "$dns1_ipv4" "$dns2_ipv4" "$dns1_ipv6" "$dns2_ipv6"
+
+
+}
+
+
+prefer_ipv4() {
+grep -q '^precedence ::ffff:0:0/96  100' /etc/gai.conf 2>/dev/null \
+	|| echo 'precedence ::ffff:0:0/96  100' >> /etc/gai.conf
+echo "IPv4優先に切り替えました"
+send_stats "IPv4優先に切り替えました"
+}
+
 
 
 
 install_ldnmp() {
 
-	  check_swap
-
-	  cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
-
-	  if ! grep -q "network_mode" /home/web/docker-compose.yml; then
-		wget -O /home/web/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml
-	  	dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
-	  	dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
-	  	dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
-
-  		sed -i "s#webroot#$dbrootpasswd#g" /home/web/docker-compose.yml
-  		sed -i "s#kejilionYYDS#$dbusepasswd#g" /home/web/docker-compose.yml
-  		sed -i "s#kejilion#$dbuse#g" /home/web/docker-compose.yml
-
-	  fi
-
-	  if grep -q "kjlion/nginx:alpine" /home/web/docker-compose1.yml; then
-	  	sed -i 's|kjlion/nginx:alpine|nginx:alpine|g' /home/web/docker-compose.yml  > /dev/null 2>&1
-		sed -i 's|nginx:alpine|kjlion/nginx:alpine|g' /home/web/docker-compose.yml  > /dev/null 2>&1
-	  fi
+	  update_docker_compose_with_db_creds
 
 	  cd /home/web && docker compose up -d
 	  sleep 1
@@ -2244,9 +2288,11 @@ web_optimization() {
 				  1)
 				  send_stats "サイト標準モード"
 
-				  # nginxのチューニング
-				  sed -i 's/worker_connections.*/worker_connections 10240;/' /home/web/nginx.conf
-				  sed -i 's/worker_processes.*/worker_processes 4;/' /home/web/nginx.conf
+				  local cpu_cores=$(nproc)
+				  local connections=$((1024 * ${cpu_cores}))
+				  sed -i "s/worker_processes.*/worker_processes ${cpu_cores};/" /home/web/nginx.conf
+				  sed -i "s/worker_connections.*/worker_connections ${connections};/" /home/web/nginx.conf
+
 
 				  # PHPのチューニング
 				  wget -O /home/optimized_php.ini ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
@@ -2285,8 +2331,10 @@ web_optimization() {
 				  send_stats "サイトハイパフォーマンスモード"
 
 				  # nginxのチューニング
-				  sed -i 's/worker_connections.*/worker_connections 20480;/' /home/web/nginx.conf
-				  sed -i 's/worker_processes.*/worker_processes 8;/' /home/web/nginx.conf
+				  local cpu_cores=$(nproc)
+				  local connections=$((2048 * ${cpu_cores}))
+				  sed -i "s/worker_processes.*/worker_processes ${cpu_cores};/" /home/web/nginx.conf
+				  sed -i "s/worker_connections.*/worker_connections ${connections};/" /home/web/nginx.conf
 
 				  # PHPのチューニング
 				  wget -O /home/optimized_php.ini ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
@@ -2872,7 +2920,7 @@ docker_app_plus() {
 			1)
 				setup_docker_dir
 				check_disk_space $app_size /home/docker
-				read -e -p "アプリケーションの外部サービス ポートを入力し、Enter キーを押してデフォルトで使用します。${docker_port}ポート：" app_port
+				read -e -p "アプリケーションの外部サービス ポートを入力し、Enter キーを押して、それをデフォルトで使用します。${docker_port}ポート：" app_port
 				local app_port=${app_port:-${docker_port}}
 				local docker_port=$app_port
 				install jq
@@ -3227,7 +3275,7 @@ ldnmp_wp() {
   wget -O latest.zip ${gh_proxy}github.com/kejilion/Website_source_code/raw/refs/heads/main/wp-latest.zip
   unzip latest.zip
   rm latest.zip
-  echo "define('FS_METHOD', 'direct'); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379');" >> /home/web/html/$yuming/wordpress/wp-config-sample.php
+  echo "define('FS_METHOD', 'direct'); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379'); define('WP_REDIS_MAXTTL', 86400); define('WP_CACHE_KEY_SALT', '${yuming}_');" >> /home/web/html/$yuming/wordpress/wp-config-sample.php
   sed -i "s|database_name_here|$dbname|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
   sed -i "s|username_here|$dbuse|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
   sed -i "s|password_here|$dbusepasswd|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
@@ -3277,8 +3325,6 @@ ldnmp_Proxy() {
 ldnmp_Proxy_backend() {
 	clear
 	webname="反向代理-负载均衡"
-	yuming="${1:-}"
-	reverseproxy_port="${2:-}"
 
 	send_stats "インストール$webname"
 	echo "導入を開始する$webname"
@@ -3313,6 +3359,200 @@ ldnmp_Proxy_backend() {
 	docker exec nginx nginx -s reload
 	nginx_web_on
 }
+
+
+
+
+
+
+list_stream_services() {
+
+	STREAM_DIR="/home/web/stream.d"
+	printf "%-25s %-18s %-25s %-20s\n" "服务名" "通信类型" "本机地址" "后端地址"
+
+	if [ -z "$(ls -A "$STREAM_DIR")" ]; then
+		return
+	fi
+
+	for conf in "$STREAM_DIR"/*; do
+		# サービス名はファイル名を取得します
+		service_name=$(basename "$conf" .conf)
+
+		# 上流ブロックでサーバーのバックエンド IP:ポートを取得します。
+		backend=$(grep -Po '(?<=server )[^;]+' "$conf" | head -n1)
+
+		# リッスンポートの取得
+		listen_port=$(grep -Po '(?<=listen )[^;]+' "$conf" | head -n1)
+
+		# デフォルトのローカルIP
+		ip_address
+		local_ip="$ipv4_address"
+
+		# ファイル名の接尾辞または内容から最初に判断して通信タイプを取得します
+		if grep -qi 'udp;' "$conf"; then
+			proto="udp"
+		else
+			proto="tcp"
+		fi
+
+		# スプライス リスニング IP:ポート
+		local_addr="$local_ip:$listen_port"
+
+		printf "%-22s %-14s %-21s %-20s\n" "$service_name" "$proto" "$local_addr" "$backend"
+	done
+}
+
+
+
+
+
+
+
+
+
+stream_panel() {
+	send_stats "ストリーム 4 層プロキシ"
+	local app_id="104"
+	local docker_name="nginx"
+
+	while true; do
+		clear
+		check_docker_app
+		check_docker_image_update $docker_name
+		echo -e "ストリーム 4 層プロキシ転送ツール$check_docker $update_status"
+		echo "NGINX Stream は NGINX の TCP/UDP プロキシ モジュールであり、高性能のトランスポート層トラフィック転送とロード バランシングを実現するために使用されます。"
+		echo "------------------------"
+		if [ -d "/home/web/stream.d" ]; then
+			list_stream_services
+		fi
+		echo ""
+		echo "------------------------"
+		echo "1. インストール 2. アップデート 3. アンインストール"
+		echo "------------------------"
+		echo "4. 転送サービスの追加 5. 転送サービスの変更 6. 転送サービスの削除"
+		echo "------------------------"
+		echo "0. 前のメニューに戻る"
+		echo "------------------------"
+		read -e -p "選択内容を入力してください:" choice
+		case $choice in
+			1)
+				nginx_install_status
+				add_app_id
+				send_stats "Stream 4 層エージェントのインストール"
+				;;
+			2)
+				update_docker_compose_with_db_creds
+				nginx_upgrade
+				add_app_id
+				send_stats "ストリームの 4 層プロキシを更新します"
+				;;
+			3)
+				read -e -p "nginx コンテナを削除してもよろしいですか?これはウェブサイトの機能に影響を与える可能性があります。 (y/N):" confirm
+				if [[ "$confirm" =~ ^[Yy]$ ]]; then
+					docker rm -f nginx
+					sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+					send_stats "ストリームの 4 層プロキシを更新します"
+					echo "nginxコンテナは削除されました。"
+				else
+					echo "操作はキャンセルされました。"
+				fi
+
+				;;
+
+			4)
+				ldnmp_Proxy_backend_stream
+				add_app_id
+				send_stats "レイヤー 4 プロキシを追加する"
+				;;
+			5)
+				send_stats "転送設定の編集"
+				read -e -p "編集するサービス名を入力してください:" stream_name
+				install nano
+				nano /home/web/stream.d/$stream_name.conf
+				docker restart nginx
+				send_stats "レイヤ 4 プロキシを変更する"
+				;;
+			6)
+				send_stats "転送設定の削除"
+				read -e -p "削除するサービス名を入力してください:" stream_name
+				rm /home/web/stream.d/$stream_name.conf > /dev/null 2>&1
+				docker restart nginx
+				send_stats "レイヤ 4 プロキシを削除する"
+				;;
+			*)
+				break
+				;;
+		esac
+		break_end
+	done
+}
+
+
+
+ldnmp_Proxy_backend_stream() {
+	clear
+	webname="Stream四层代理-负载均衡"
+
+	send_stats "インストール$webname"
+	echo "導入を開始する$webname"
+
+	# エージェント名を取得する
+	read -rp "プロキシ転送名を入力してください (例: mysql_proxy):" proxy_name
+	if [ -z "$proxy_name" ]; then
+		echo "名前を空にすることはできません"; return 1
+	fi
+
+	# リスニングポートの取得
+	read -rp "ローカルのリスニング ポート (3306 など) を入力してください。" listen_port
+	if ! [[ "$listen_port" =~ ^[0-9]+$ ]]; then
+		echo "ポートは数値である必要があります"; return 1
+	fi
+
+	echo "契約の種類を選択してください:"
+	echo "1. TCP    2. UDP"
+	read -rp "シリアル番号を入力してください [1-2]:" proto_choice
+
+	case "$proto_choice" in
+		1) proto="tcp"; listen_suffix="" ;;
+		2) proto="udp"; listen_suffix=" udp" ;;
+		*) echo "無効な選択"; return 1 ;;
+	esac
+
+	read -e -p "1 つ以上のバックエンド IP + ポートをスペースで区切って入力してください (例: 10.13.0.2:3306 10.13.0.3:3306)。" reverseproxy_port
+
+	nginx_install_status
+	cd /home && mkdir -p web/stream.d
+	grep -q '^[[:space:]]*stream[[:space:]]*{' /home/web/nginx.conf || echo -e '\nstream {\n    include /etc/nginx/stream.d/*.conf;\n}' | tee -a /home/web/nginx.conf
+	wget -O /home/web/stream.d/$proxy_name.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend-stream.conf
+
+	backend=$(tr -dc 'A-Za-z' < /dev/urandom | head -c 8)
+	sed -i "s/backend_yuming_com/${proxy_name}_${backend}/g" /home/web/stream.d/"$proxy_name".conf
+	sed -i "s|listen 80|listen $listen_port $listen_suffix|g" /home/web/stream.d/$proxy_name.conf
+	sed -i "s|listen \[::\]:|listen [::]:${listen_port} ${listen_suffix}|g" "/home/web/stream.d/${proxy_name}.conf"
+
+	upstream_servers=""
+	for server in $reverseproxy_port; do
+		upstream_servers="$upstream_servers    server $server;\n"
+	done
+
+	sed -i "s/# 动态添加/$upstream_servers/g" /home/web/stream.d/$proxy_name.conf
+
+	docker exec nginx nginx -s reload
+	clear
+	echo "あなたの$webname建てられました！"
+	echo "------------------------"
+	echo "訪問先住所:"
+	ip_address
+	if [ -n "$ipv4_address" ]; then
+		echo "$ipv4_address:${listen_port}"
+	fi
+	if [ -n "$ipv6_address" ]; then
+		echo "$ipv6_address:${listen_port}"
+	fi
+	echo ""
+}
+
+
 
 
 
@@ -5480,7 +5720,7 @@ while true; do
   case $choice in
 	  1)
 		  update_locale "en_US.UTF-8" "en_US.UTF-8"
-		  send_stats "英語に切り替えて"
+		  send_stats "英語に切り替えてください"
 		  ;;
 	  2)
 		  update_locale "zh_CN.UTF-8" "zh_CN.UTF-8"
@@ -6536,7 +6776,7 @@ linux_tools() {
 
   while true; do
 	  clear
-	  # send_stats "基本ツール"
+	  # send_stats 「基本ツール」
 	  echo -e "基本的なツール"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}カールダウンロードツール${gl_huang}★${gl_bai}                   ${gl_kjlan}2.   ${gl_bai}wgetダウンロードツール${gl_huang}★${gl_bai}"
@@ -7185,7 +7425,7 @@ linux_docker() {
 	  echo -e "${gl_kjlan}5.   ${gl_bai}Dockerネットワーク管理"
 	  echo -e "${gl_kjlan}6.   ${gl_bai}Docker ボリューム管理"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}7.   ${gl_bai}不要な Docker コンテナをクリーンアップし、ネットワーク データ ボリュームをミラーリングします。"
+	  echo -e "${gl_kjlan}7.   ${gl_bai}不要な Docker コンテナをクリーンアップし、ネットワーク データ ボリュームをミラーリングします"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}8.   ${gl_bai}Dockerソースを変更する"
 	  echo -e "${gl_kjlan}9.   ${gl_bai}daemon.json ファイルを編集する"
@@ -7847,7 +8087,7 @@ linux_ldnmp() {
 	echo -e "${gl_huang}23.  ${gl_bai}サイト リバース プロキシ - IP+ポート${gl_huang}★${gl_bai}            ${gl_huang}24.  ${gl_bai}サイト リバース プロキシ ドメイン名"
 	echo -e "${gl_huang}25.  ${gl_bai}Bitwarden パスワード管理プラットフォームをインストールする${gl_huang}26.  ${gl_bai}Halo ブログ サイトをインストールする"
 	echo -e "${gl_huang}27.  ${gl_bai}AI絵画プロンプトワードジェネレーターをインストールする${gl_huang}28.  ${gl_bai}サイト リバース プロキシ負荷分散"
-	echo -e "${gl_huang}30.  ${gl_bai}カスタム静的サイト"
+	echo -e "${gl_huang}29.  ${gl_bai}ストリーム 4 層プロキシ転送${gl_huang}30.  ${gl_bai}カスタム静的サイト"
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}31.  ${gl_bai}サイトデータ管理${gl_huang}★${gl_bai}                    ${gl_huang}32.  ${gl_bai}サイト全体のデータをバックアップする"
 	echo -e "${gl_huang}33.  ${gl_bai}スケジュールされたリモートバックアップ${gl_huang}34.  ${gl_bai}サイト全体のデータを復元する"
@@ -8427,6 +8667,10 @@ linux_ldnmp() {
 		;;
 
 
+	  29)
+	  stream_panel
+		;;
+
 	  30)
 	  clear
 	  webname="静态站点"
@@ -8873,7 +9117,9 @@ while true; do
 	  echo -e "${gl_kjlan}99.  ${color99}DSM Synology 仮想マシン${gl_kjlan}100. ${color100}Syncthing ピアツーピア ファイル同期ツール"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}101. ${color101}AI動画生成ツール${gl_kjlan}102. ${color102}VoceChat 複数人オンライン チャット システム"
-	  echo -e "${gl_kjlan}103. ${color103}Umami ウェブサイト統計ツール"
+	  echo -e "${gl_kjlan}103. ${color103}Umami ウェブサイト統計ツール${gl_kjlan}104. ${color104}ストリーム 4 層プロキシ転送ツール"
+	  echo -e "${gl_kjlan}105. ${color105}思源ノート${gl_kjlan}106. ${color106}Drawnix オープンソース ホワイトボード ツール"
+	  echo -e "${gl_kjlan}107. ${color107}PanSou ネットワークディスク検索"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}すべてのアプリケーション データをバックアップする${gl_kjlan}r.   ${gl_bai}すべてのアプリデータを復元する"
 	  echo -e "${gl_kjlan}------------------------"
@@ -10497,7 +10743,7 @@ while true; do
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env
 			# sed -i 's/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=${docker_port}/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/' /home/docker/dify/docker/.env
 			sed -i "s/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=${docker_port}/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/" /home/docker/dify/docker/.env
 
@@ -10536,7 +10782,7 @@ while true; do
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/Calcium-Ion/new-api.git && cd new-api
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/Calcium-Ion/new-api.git && cd new-api
 
 			sed -i -e "s/- \"3000:3000\"/- \"${docker_port}:3000\"/g" \
 				   -e 's/container_name: redis/container_name: redis-new-api/g' \
@@ -10653,7 +10899,7 @@ while true; do
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/infiniflow/ragflow.git && cd ragflow/docker
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/infiniflow/ragflow.git && cd ragflow/docker
 			sed -i "s/- 80:80/- ${docker_port}:80/; /- 443:443/d" docker-compose.yml
 			docker compose up -d
 			clear
@@ -11384,7 +11630,7 @@ while true; do
 		  local app_size="3"
 
 		  docker_app_install() {
-			  install git openssl
+			  install git openssl wget
 			  mkdir -p /home/docker/${docker_name} && cd /home/docker/${docker_name}
 
 			  wget -O docker-compose.yml ${gh_proxy}github.com/immich-app/immich/releases/latest/download/docker-compose.yml
@@ -12109,7 +12355,7 @@ while true; do
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/harry0703/MoneyPrinterTurbo.git && cd MoneyPrinterTurbo/
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/harry0703/MoneyPrinterTurbo.git && cd MoneyPrinterTurbo/
 			sed -i "s/8501:8501/${docker_port}:8501/g" /home/docker/MoneyPrinterTurbo/docker-compose.yml
 
 			docker compose up -d
@@ -12176,7 +12422,7 @@ while true; do
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/umami-software/umami.git && cd umami
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/umami-software/umami.git && cd umami
 			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/umami/docker-compose.yml
 
 			docker compose up -d
@@ -12204,6 +12450,107 @@ while true; do
 		docker_app_plus
 
 		  ;;
+
+	  104|nginx-stream)
+		stream_panel
+		  ;;
+
+
+	  105|siyuan)
+
+		local app_id="105"
+		local docker_name="siyuan"
+		local docker_img="b3log/siyuan"
+		local docker_port=8105
+
+		docker_rum() {
+
+			read -e -p "ログインパスワードを設定します:" app_passwd
+
+			docker run -d \
+			  --name siyuan \
+			  --restart=always \
+			  -v /home/docker/siyuan/workspace:/siyuan/workspace \
+			  -p ${docker_port}:6806 \
+			  -e PUID=1001 \
+			  -e PGID=1002 \
+			  b3log/siyuan \
+			  --workspace=/siyuan/workspace/ \
+			  --accessAuthCode="${app_passwd}"
+
+		}
+
+		local docker_describe="思源笔记是一款隐私优先的知识管理系统"
+		local docker_url="官网介绍: https://github.com/siyuan-note/siyuan"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		  ;;
+
+
+	  106|drawnix)
+
+		local app_id="106"
+		local docker_name="drawnix"
+		local docker_img="pubuzhixing/drawnix"
+		local docker_port=8106
+
+		docker_rum() {
+
+			docker run -d \
+			   --restart=always  \
+			   --name drawnix \
+			   -p ${docker_port}:80 \
+			  pubuzhixing/drawnix
+
+		}
+
+		local docker_describe="是一款强大的开源白板工具，集成思维导图、流程图等。"
+		local docker_url="官网介绍: https://github.com/plait-board/drawnix"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		  ;;
+
+
+	  107|pansou)
+
+		local app_id="107"
+		local docker_name="pansou"
+		local docker_img="ghcr.io/fish2018/pansou-web"
+		local docker_port=8107
+
+		docker_rum() {
+
+			docker run -d \
+			  --name pansou \
+			  --restart=always \
+			  -p ${docker_port}:80 \
+			  -v /home/docker/pansou/data:/app/data \
+			  -v /home/docker/pansou/logs:/app/logs \
+			  -e ENABLED_PLUGINS="hunhepan,jikepan,panwiki,pansearch,panta,qupansou,
+susu,thepiratebay,wanou,xuexizhinan,panyq,zhizhen,labi,muou,ouge,shandian,
+duoduo,huban,cyg,erxiao,miaoso,fox4k,pianku,clmao,wuji,cldi,xiaozhang,
+libvio,leijing,xb6v,xys,ddys,hdmoli,yuhuage,u3c3,javdb,clxiong,jutoushe,
+sdso,xiaoji,xdyh,haisou,bixin,djgou,nyaa,xinjuc,aikanzy,qupanshe,xdpan,
+discourse,yunsou,ahhhhfs,nsgame,gying" \
+			  ghcr.io/fish2018/pansou-web
+
+		}
+
+		local docker_describe="PanSou是一个高性能的网盘资源搜索API服务。"
+		local docker_url="官网介绍: https://github.com/fish2018/pansou"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		  ;;
+
 
 
 
@@ -12741,10 +13088,7 @@ EOF
 
 				case $choice in
 					1)
-						grep -q '^precedence ::ffff:0:0/96  100' /etc/gai.conf 2>/dev/null \
-  							|| echo 'precedence ::ffff:0:0/96  100' >> /etc/gai.conf
-						echo "IPv4優先に切り替えました"
-						send_stats "IPv4優先に切り替えました"
+						prefer_ipv4
 						;;
 					2)
 						rm -f /etc/gai.conf
@@ -13574,20 +13918,7 @@ EOF
 				  echo -e "[${gl_lv}OK${gl_bai}】7/10。タイムゾーンを次のように設定します${gl_huang}上海${gl_bai}"
 
 				  echo "------------------------------------------------"
-				  local country=$(curl -s ipinfo.io/country)
-				  if [ "$country" = "CN" ]; then
-					 local dns1_ipv4="223.5.5.5"
-					 local dns2_ipv4="183.60.83.19"
-					 local dns1_ipv6="2400:3200::1"
-					 local dns2_ipv6="2400:da00::6666"
-				  else
-					 local dns1_ipv4="1.1.1.1"
-					 local dns2_ipv4="8.8.8.8"
-					 local dns1_ipv6="2606:4700:4700::1111"
-					 local dns2_ipv6="2001:4860:4860::8888"
-				  fi
-
-				  set_dns
+				  auto_optimize_dns
 				  echo -e "[${gl_lv}OK${gl_bai}】8/10。 DNSアドレスを自動的に最適化する${gl_huang}${gl_bai}"
 
 				  echo "------------------------------------------------"
@@ -13631,7 +13962,7 @@ EOF
 			  fi
 
 			  echo "プライバシーとセキュリティ"
-			  echo "スクリプトはユーザーの機能使用に関するデータを収集し、スクリプト エクスペリエンスを最適化し、より楽しくて便利な機能を作成します。"
+			  echo "スクリプトはユーザーによる機能の使用に関するデータを収集し、スクリプト エクスペリエンスを最適化し、より楽しくて便利な機能を作成します。"
 			  echo "スクリプトのバージョン番号、使用時間、システムバージョン、CPUアーキテクチャ、マシンの国、使用された機能の名前が収集されます。"
 			  echo "------------------------------------------------"
 			  echo -e "現在のステータス:$status_message"
@@ -13980,7 +14311,7 @@ while true; do
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}サーバーリスト管理${gl_bai}"
 	  echo -e "${gl_kjlan}1.  ${gl_bai}サーバーの追加${gl_kjlan}2.  ${gl_bai}サーバーの削除${gl_kjlan}3.  ${gl_bai}サーバーの編集"
-	  echo -e "${gl_kjlan}4.  ${gl_bai}バックアップクラスタ${gl_kjlan}5.  ${gl_bai}クラスターを復元する"
+	  echo -e "${gl_kjlan}4.  ${gl_bai}バックアップクラスター${gl_kjlan}5.  ${gl_bai}クラスターを復元する"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}タスクをバッチで実行する${gl_bai}"
 	  echo -e "${gl_kjlan}11. ${gl_bai}テクノロジ ライオン スクリプトをインストールする${gl_kjlan}12. ${gl_bai}アップデートシステム${gl_kjlan}13. ${gl_bai}システムをクリーンアップする"
@@ -14102,7 +14433,7 @@ echo "------------------------"
 echo -e "${gl_zi}V.PS 月額 6.9 ドル 東京ソフトバンク 2 コア 1G メモリ 20G ハードドライブ 月額 1T トラフィック${gl_bai}"
 echo -e "${gl_bai}URL：https://vps.hosting/cart/tokyo-cloud-kvm-vps/?id=148&?affid=1355&?affid=1355${gl_bai}"
 echo "------------------------"
-echo -e "${gl_kjlan}さらに人気のある VPS オファー${gl_bai}"
+echo -e "${gl_kjlan}さらに人気のある VPS セール${gl_bai}"
 echo -e "${gl_bai}ウェブサイト：https://kejilion.pro/topvps/${gl_bai}"
 echo "------------------------"
 echo ""
@@ -14324,6 +14655,7 @@ echo "LDNMP キャッシュのクリーニング k Web キャッシュ"
 echo "WordPress をインストールします。 kワードプレス | k wp xxx.com"
 echo "リバース プロキシをインストールします k fd |k rp |k リバース プロキシ |k fd xxx.com"
 echo "ロード バランシングのインストール k ロード バランシング |k ロード バランシング"
+echo "L4 ロード バランシング k ストリーム |k L4 ロード バランシングをインストールする"
 echo "ファイアウォール パネル k fhq |k ファイアウォール"
 echo "ポートを開きます k dkdk 8080 |k ポートを開きます 8080"
 echo "ポート k gbdk 7800 を閉じる |k ポート 7800 を閉じる"
@@ -14412,6 +14744,11 @@ else
 
 		loadbalance|负载均衡)
 			ldnmp_Proxy_backend
+			;;
+
+
+		stream|L4负载均衡)
+			ldnmp_Proxy_backend_stream
 			;;
 
 		swap)
