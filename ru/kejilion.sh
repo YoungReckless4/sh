@@ -13995,7 +13995,7 @@ EOF
 
 		  99)
 			  clear
-			  send_stats "重启系统"
+			  send_stats "Перезагрузите систему"
 			  server_reboot
 			  ;;
 		  100)
