@@ -30,7 +30,7 @@ jobs:
     
     - name: Create translation directories
       run: |
-        mkdir -p en tw kr jp
+        mkdir -p en tw kr jp ru
     
     - name: Create translation script
       run: |
@@ -124,7 +124,7 @@ jobs:
         
         if __name__ == "__main__":
             input_file = 'kejilion.sh'
-            langs = {'en': 'en', 'tw': 'zh-TW', 'kr': 'ko', 'jp': 'ja'}
+            langs = {'en': 'en', 'tw': 'zh-TW', 'kr': 'ko', 'jp': 'ja', 'ru': 'ru'}
             for dir_name, lang_code in langs.items():
                 translate_file(input_file, f'{dir_name}/kejilion.sh', lang_code)
         EOF
@@ -154,7 +154,7 @@ jobs:
         echo "## Translation Summary 📊" >> $GITHUB_STEP_SUMMARY
         echo "| Language | Status |" >> $GITHUB_STEP_SUMMARY
         echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
-        for dir in en tw kr jp; do
+        for dir in en tw kr jp ru; do
           [ -f "$dir/kejilion.sh" ] && status="✅ Success" || status="❌ Failed"
           echo "| $dir | $status |" >> $GITHUB_STEP_SUMMARY
         done
