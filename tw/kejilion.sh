@@ -1234,7 +1234,7 @@ add_swap() {
 	# 確保 /swapfile 不再被使用
 	swapoff /swapfile
 
-	# 刪除舊的 /swapfile
+	# 删除旧的 /swapfile
 	rm -f /swapfile
 
 	# 建立新的 swap 分割區
@@ -2555,7 +2555,7 @@ check_docker_image_update() {
 		# --- 場景 A: 鏡像在 GitHub (ghcr.io) ---
 		# 提取倉庫路徑，例如 ghcr.io/onexru/oneimg -> onexru/oneimg
 		local repo_path=$(echo "$full_image_name" | sed 's/ghcr.io\///' | cut -d':' -f1)
-		# 註：ghcr.io 的 API 比較複雜，通常最快的方法是查 GitHub Repo 的 Release
+		# 注意：ghcr.io 的 API 比较复杂，通常最快的方法是查 GitHub Repo 的 Release
 		local api_url="https://api.github.com/repos/$repo_path/releases/latest"
 		local remote_date=$(curl -s "$api_url" | jq -r '.published_at' 2>/dev/null)
 
@@ -2874,7 +2874,7 @@ while true; do
 	fi
 	echo ""
 	echo "------------------------"
-	echo "1. 安裝 2. 更新 3. 卸載"
+	echo "1. 安装              2. 更新            3. 卸载"
 	echo "------------------------"
 	echo "5. 新增網域存取 6. 刪除網域存取"
 	echo "7. 允許IP+連接埠存取 8. 阻止IP+連接埠訪問"
@@ -5011,7 +5011,7 @@ fetch_github_ssh_keys() {
 	echo "2. 點選 New SSH key 或 Add SSH key"
 	echo "3. Title 可隨意填寫（例如：Home Laptop 2026）"
 	echo "4. 將本機公鑰內容（通常是 ~/.ssh/id_ed25519.pub 或 id_rsa.pub 的全部內容）貼到 Key 字段"
-	echo "5. 點選 Add SSH key 完成新增"
+	echo "  5. 点击 Add SSH key 完成添加"
 	echo ""
 	echo "新增完成後，GitHub 會公開提供您的所有公鑰，位址為："
 	echo "  ${gh_https_url}github.com/您的使用者名稱.keys"
@@ -6619,7 +6619,7 @@ ssh_manager() {
 		echo "可以透過SSH連接到其他Linux系統上"
 		echo "------------------------"
 		list_connections
-		echo "1. 建立新連接 2. 使用連接 3. 刪除連接"
+		echo "1. 创建新连接        2. 使用连接        3. 删除连接"
 		echo "------------------------"
 		echo "0. 返回上一級選單"
 		echo "------------------------"
@@ -6696,7 +6696,7 @@ mount_partition() {
 		return 1
 	fi
 
-	echo "分區已成功掛載到$MOUNT_POINT"
+	echo "分割區已成功掛載到$MOUNT_POINT"
 
 	# 檢查 /etc/fstab 是否已經存在 UUID 或掛載點
 	if grep -qE "UUID=$UUID|[[:space:]]$MOUNT_POINT[[:space:]]" /etc/fstab; then
@@ -9693,7 +9693,7 @@ moltbot_menu() {
 		echo "--------------------"
 		echo "0. 返回上一級選單"
 		echo "--------------------"
-		printf "請輸入選項並回車:"
+		printf "请输入选项并回车: "
 	}
 
 
@@ -10020,18 +10020,18 @@ EOF
 			echo "========================================"
 			echo "外掛程式管理 (安裝)"
 			echo "========================================"
-			echo "目前已安裝插件:"
+			echo "當前已安裝插件:"
 			openclaw plugins list
 			echo "----------------------------------------"
 
 			# 輸出推薦的實用外掛程式列表，方便用戶複製
 			echo "建議的實用外掛程式（可直接複製名稱輸入）："
-			echo "feishu                # 飞书/Lark 集成 (当前已加载 ✓)"
+			echo "feishu # 飛書/Lark 整合 (目前已載入 ✓)"
 			echo "telegram # Telegram 機器人整合 (目前已載入 ✓)"
 			echo "memory-core # 核心記憶增強：基於檔案的上下文搜尋 (目前已載入 ✓)"
 			echo "@openclaw/slack # Slack 頻道與 DMs 深度連接"
 			echo "@openclaw/bluebubbles # iMessage 橋接 (macOS 用戶首選)"
-			echo "@openclaw/msteams     # Microsoft Teams 企业通讯集成"
+			echo "@openclaw/msteams # Microsoft Teams 企業通訊集成"
 			echo "@openclaw/voice-call # 語音通話外掛程式 (基於 Twilio 等後端)"
 			echo "@openclaw/discord # Discord 頻道自動化管理"
 			echo "@openclaw/nostr # Nostr 協定：隱私安全加密聊天"
@@ -10059,12 +10059,12 @@ EOF
 			# 1. 徹底清理之前失敗的殘留（使用者目錄）
 			rm -rf "/root/.openclaw/extensions/$plugin_name"
 
-			# 2. 檢查系統是否已預先安裝（防止 duplicate id 衝突）
+			# 2. 检查系统是否已经预装（防止 duplicate id 冲突）
 			if [ -d "/usr/lib/node_modules/openclaw/extensions/$plugin_name" ]; then
 				echo "💡 偵測到系統目錄已存在該插件，正在直接啟動..."
 				openclaw plugins enable "$plugin_name"
 			else
-				echo "📥 正在透過官方管道下載安裝插件..."
+				echo "📥 正在通过官方渠道下载安装插件..."
 				# 使用 openclaw 自己的 install 指令，它會自動處理 package.json 的規格檢查
 				openclaw plugins install "$plugin_name"
 
@@ -10188,8 +10188,8 @@ EOF
 			echo "建議的實用技能（可直接複製名稱輸入）："
 			echo "github # 管理 GitHub Issues/PR/CI (gh CLI)"
 			echo "notion # 操作 Notion 頁面、資料庫和區塊"
-			echo "apple-notes # macOS 原生筆記管理 (建立/編輯/搜尋)"
-			echo "apple-reminders # macOS 提醒事項管理 (待辦事項清單)"
+			echo "apple-notes        # macOS 原生笔记管理 (创建/编辑/搜索)"
+			echo "apple-reminders    # macOS 提醒事项管理 (待办清单)"
 			echo "1password # 自動化讀取和注入 1Password 金鑰"
 			echo "gog # Google Workspace (Gmail/雲端盤/文件) 全能助手"
 			echo "things-mac # 深度整合 Things 3 任務管理"
@@ -10203,7 +10203,7 @@ EOF
 			echo "----------------------------------------"
 
 			# 提示使用者輸入技能名稱
-			read -e -p "请输入要安装的技能名称（输入 0 退出）： " skill_name
+			read -e -p "請輸入要安裝的技能名稱（輸入 0 退出）：" skill_name
 
 			# 1. 檢查是否輸入 0 退出
 			if [ "$skill_name" = "0" ]; then
@@ -10362,7 +10362,7 @@ EOF
 		echo -e "${gl_kjlan}正在載入設備列表…${gl_bai}"
 		openclaw devices list
 
-		read -e -p "請輸入 Request_Key:" Request_Key
+		read -e -p "请输入 Request_Key: " Request_Key
 
 		[ -z "$Request_Key" ] && {
 			echo "Request_Key 不能為空"
@@ -10382,7 +10382,7 @@ EOF
 	# 主選單
 	openclaw_webui_menu() {
 
-		send_stats "WebUI存取與設定"
+		send_stats "WebUI访问与设置"
 		while true; do
 			clear
 			openclaw_show_webui_addr
@@ -15808,7 +15808,7 @@ EOF
 			  echo "TG-bot監控預警功能"
 			  echo "影片介紹: https://youtu.be/vLL-eb3Z_TY"
 			  echo "------------------------------------------------"
-			  echo "您需要設定tg機器人API和接收預警的使用者ID，即可實現本機CPU，內存，硬碟，流量，SSH登入的即時監控預警"
+			  echo "您需要設定tg機器人API和接收預警的用戶ID，即可實現本機CPU，內存，硬碟，流量，SSH登入的即時監控預警"
 			  echo "到達閾值後會向用戶發送預警訊息"
 			  echo -e "${gl_hui}-關於流量，重啟伺服器將重新計算-${gl_bai}"
 			  read -e -p "確定繼續嗎？ (Y/N):" choice
