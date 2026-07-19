@@ -617,7 +617,7 @@ while true; do
 	echo "Список образов Docker"
 	docker image ls
 	echo ""
-	echo "Операция зеркала"
+	echo "Зеркальное управление"
 	echo "------------------------"
 	echo "1. Получить указанное изображение 3. Удалить указанное изображение"
 	echo "2. Обновить указанное изображение. 4. Удалить все изображения."
@@ -1234,7 +1234,7 @@ add_swap() {
 	# Убедитесь, что /swapfile больше не используется.
 	swapoff /swapfile
 
-	# Удалить старый файл/файл подкачки
+	# Удалить старый /файл подкачки
 	rm -f /swapfile
 
 	# Создайте новый раздел подкачки
@@ -1537,9 +1537,9 @@ certs_status() {
 		echo -e "${gl_hong}Уведомление:${gl_bai}Не удалось применить сертификат. Проверьте следующие возможные причины и повторите попытку:"
 		echo -e "1. Доменное имя написано неправильно ➠ Проверьте, правильно ли введено доменное имя."
 		echo -e "2. Проблема с разрешением DNS ➠ Убедитесь, что имя домена правильно преобразовано в IP-адрес сервера."
-		echo -e "3. Проблемы с настройкой сети ➠ Если вы используете виртуальные сети, такие как Cloudflare Warp, временно выключите их."
+		echo -e "3. Проблемы с конфигурацией сети ➠ Если вы используете виртуальные сети, такие как Cloudflare Warp, временно выключите их."
 		echo -e "4. Ограничения брандмауэра ➠ Проверьте, открыт ли порт 80/443, и убедитесь, что он доступен."
-		echo -e "5. Количество заявок превышает лимит ➠ Let’s Encrypt имеет недельный лимит (5 раз/доменное имя/неделю)."
+		echo -e "5. Количество заявок превышает лимит ➠ Let's Encrypt имеет недельный лимит (5 раз/доменное имя/неделю)."
 		echo -e "6. Ограничения на регистрацию внутри страны ➠ Для материкового Китая подтвердите, зарегистрировано ли доменное имя."
 		echo "------------------------"
 		echo "1. Повторно подать заявку 2. Импортировать существующий сертификат 0. Выйти"
@@ -3523,7 +3523,7 @@ ldnmp_Proxy_backend() {
 list_stream_services() {
 
 	STREAM_DIR="/home/web/stream.d"
-	printf "%-25s %-18s %-25s %-20s\n" "Название службы" "Тип связи" "Местный адрес" "Внутренний адрес"
+	printf "%-25s %-18s %-25s %-20s\n" "Название службы" "Тип связи" "местный адрес" "Внутренний адрес"
 
 	if [ -z "$(ls -A "$STREAM_DIR")" ]; then
 		return
@@ -3800,7 +3800,7 @@ ldnmp_web_status() {
 		case $sub_choice in
 			1)
 				send_stats "Подать заявку на сертификат доменного имени"
-				read -e -p "Пожалуйста, введите имя вашего домена:" yuming
+				read -e -p "Пожалуйста, введите ваше доменное имя:" yuming
 				install_certbot
 				docker run --rm -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n 2>/dev/null
 				install_ssltls
@@ -4070,9 +4070,9 @@ EOF
 
 add_forwarding_service() {
 	send_stats "Добавить службу интрасети frp"
-	# Запрашивает у пользователя название службы и информацию о пересылке.
+	# Запрашивает у пользователя имя службы и информацию о пересылке.
 	read -e -p "Пожалуйста, введите название услуги:" service_name
-	read -e -p "Пожалуйста, введите тип пересылки (tcp/udp) [Введите значение по умолчанию: TCP]:" service_type
+	read -e -p "Пожалуйста, введите тип переадресации (tcp/udp) [Введите значение по умолчанию TCP]:" service_type
 	local service_type=${service_type:-tcp}
 	read -e -p "Пожалуйста, введите IP-адрес интрасети [по умолчанию — 127.0.0.1 при нажатии Enter]:" local_ip
 	local local_ip=${local_ip:-127.0.0.1}
@@ -4103,7 +4103,7 @@ EOF
 delete_forwarding_service() {
 	send_stats "Удалить службу интрасети frp"
 	# Предложить пользователю ввести название службы, которую необходимо удалить.
-	read -e -p "请输入需要删除的服务名称: " service_name
+	read -e -p "Пожалуйста, введите название услуги, которую необходимо удалить:" service_name
 	# Используйте sed для удаления службы и связанной с ней конфигурации.
 	sed -i "/\[$service_name\]/,/^$/d" /home/frp/frpc.toml
 	echo "Служить$service_nameУспешно удалено из frpc.toml."
@@ -4215,7 +4215,7 @@ generate_access_urls() {
 	if [ "$has_valid_ports" = true ]; then
 		echo "Адрес внешнего доступа к сервису FRP:"
 
-		# Обработка IPv4-адресов
+		# Обработка адресов IPv4
 		for port in "${ports[@]}"; do
 			if [[ $port != "8055" && $port != "8056" ]]; then
 				echo "http://${ipv4_address}:${port}"
@@ -4771,7 +4771,7 @@ while true; do
 		local dns1_ipv6="2400:3200::1"
 		local dns2_ipv6="2400:da00::6666"
 		set_dns
-		send_stats "Оптимизация внутреннего DNS"
+		send_stats "Внутренняя оптимизация DNS"
 		;;
 	  3)
 		install nano
@@ -4848,7 +4848,7 @@ sshkey_on() {
 		   -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
 	rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 	restart_ssh
-	echo -e "${gl_lv}Режим входа с ключом пользователя включен, а режим входа с паролем отключен. Повторное подключение вступит в силу.${gl_bai}"
+	echo -e "${gl_lv}Режим входа с ключом пользователя включен, а режим входа с паролем выключен. Повторное подключение вступит в силу.${gl_bai}"
 
 }
 
@@ -5007,7 +5007,7 @@ fetch_github_ssh_keys() {
 	local base_dir="${2:-$HOME}"
 
 	echo "Прежде чем продолжить, убедитесь, что вы добавили открытый ключ SSH в свою учетную запись GitHub:"
-	echo "1. Войдите в систему${gh_https_url}github.com/settings/keys"
+	echo "1. Войти${gh_https_url}github.com/settings/keys"
 	echo "2. Нажмите «Новый ключ SSH» или «Добавить ключ SSH»."
 	echo "3. Название можно заполнить по желанию (например: Домашний Ноутбук 2026)"
 	echo "4. Вставьте содержимое локального открытого ключа (обычно все содержимое ~/.ssh/id_ed25519.pub или id_rsa.pub) в поле «Ключ»."
@@ -5264,7 +5264,7 @@ dd_xitong() {
 				;;
 
 			  2)
-				send_stats "Переустановите дебиан 12."
+				send_stats "Переустановить дебиан 12"
 				dd_xitong_1
 				bash InstallNET.sh -debian 12
 				reboot
@@ -5443,7 +5443,7 @@ dd_xitong() {
 				;;
 
 			  41)
-				send_stats "Переустановите Windows 11"
+				send_stats "Переустановить виндовс 11"
 				dd_xitong_2
 				bash InstallNET.sh -windows 11 -lang "cn"
 				reboot
@@ -6028,7 +6028,7 @@ Kernel_optimize() {
 	  echo "Предоставляет различные режимы настройки параметров системы, и пользователи могут переключаться в соответствии со своими сценариями использования."
 	  echo -e "${gl_huang}намекать:${gl_bai}Пожалуйста, используйте его с осторожностью в производственной среде!"
 	  echo "--------------------"
-	  echo "1. Режим высокопроизводительной оптимизации: максимизируйте производительность системы и оптимизируйте файловые дескрипторы, виртуальную память, настройки сети, управление кэшем и настройки процессора."
+	  echo "1. Режим высокопроизводительной оптимизации: максимизируйте производительность системы и оптимизируйте файловые дескрипторы, виртуальную память, настройки сети, управление кэшем и настройки ЦП."
 	  echo "2. Режим сбалансированной оптимизации: обеспечивает баланс между производительностью и потреблением ресурсов, подходящий для ежедневного использования."
 	  echo "3. Режим оптимизации веб-сайта. Оптимизируйте сервер веб-сайта для улучшения возможностей одновременной обработки соединений, скорости ответа и общей производительности."
 	  echo "4. Режим оптимизации прямой трансляции: оптимизируйте особые потребности прямой трансляции, чтобы уменьшить задержки и улучшить производительность передачи."
@@ -6187,10 +6187,10 @@ break_end
 
 shell_bianse() {
   root_use
-  send_stats "Инструмент украшения командной строки"
+  send_stats "Инструмент для украшения командной строки"
   while true; do
 	clear
-	echo "Инструмент украшения командной строки"
+	echo "Инструмент для украшения командной строки"
 	echo "------------------------"
 	echo -e "1. \033[1;32mroot \033[1;34mlocalhost \033[1;31m~ \033[0m${gl_bai}#"
 	echo -e "2. \033[1;35mroot \033[1;36mlocalhost \033[1;33m~ \033[0m${gl_bai}#"
@@ -6381,7 +6381,7 @@ create_backup() {
 restore_backup() {
 	send_stats "Восстановить резервную копию"
 	# Выберите резервную копию для восстановления
-	read -e -p "Пожалуйста, введите имя файла резервной копии, который необходимо восстановить:" BACKUP_NAME
+	read -e -p "Пожалуйста, введите имя файла резервной копии, который нужно восстановить:" BACKUP_NAME
 
 	# Проверьте, существует ли файл резервной копии
 	if [ ! -f "$BACKUP_DIR/$BACKUP_NAME" ]; then
@@ -7262,7 +7262,7 @@ linux_tools() {
 	  elif command -v pkg >/dev/null 2>&1; then
 		PM="pkg"
 	  else
-		echo "❌ Нераспознанный менеджер пакетов"
+		echo "❌ Неизвестный менеджер пакетов"
 		exit 1
 	  fi
 
@@ -7297,7 +7297,7 @@ linux_tools() {
 	  echo -e "${gl_kjlan}7.   ${gl_bai}инструмент для сжатия и распаковки ZIP${gl_kjlan}8.   ${gl_bai}Инструмент сжатия и распаковки tar GZ"
 	  echo -e "${gl_kjlan}9.   ${gl_bai}инструмент многоканального фонового запуска tmux${gl_kjlan}10.  ${gl_bai}инструмент для кодирования видео в реальном времени ffmpeg"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}11.  ${gl_bai}Современный инструмент мониторинга btop${gl_huang}★${gl_bai}             ${gl_kjlan}12.  ${gl_bai}инструмент управления файлами рейнджера"
+	  echo -e "${gl_kjlan}11.  ${gl_bai}современный инструмент мониторинга btop${gl_huang}★${gl_bai}             ${gl_kjlan}12.  ${gl_bai}инструмент управления файлами рейнджера"
 	  echo -e "${gl_kjlan}13.  ${gl_bai}Инструмент просмотра использования диска ncdu${gl_kjlan}14.  ${gl_bai}инструмент глобального поиска fzf"
 	  echo -e "${gl_kjlan}15.  ${gl_bai}текстовый редактор vim${gl_kjlan}16.  ${gl_bai}текстовый редактор нано${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}17.  ${gl_bai}система контроля версий git${gl_kjlan}18.  ${gl_bai}помощник по программированию искусственного интеллекта с открытым кодом${gl_huang}★${gl_bai}"
@@ -7765,7 +7765,7 @@ docker_ssh_migration() {
 				fi
 
 				read -e -p  "Подтвердите восстановление проекта Compose [$project_name] к пути [$original_path] ? (y/n): " confirm
-				[[ "$confirm" != "y" ]] && read -e -p  "Введите новый путь восстановления:" original_path
+				[[ "$confirm" != "y" ]] && read -e -p  "Пожалуйста, введите новый путь восстановления:" original_path
 
 				mkdir -p "$original_path"
 				tar -xzf "$BACKUP_DIR/compose_project_${project_name}.tar.gz" -C "$original_path"
@@ -8244,7 +8244,7 @@ linux_test() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}Тестирование производительности оборудования"
 	  echo -e "${gl_kjlan}21.  ${gl_bai}тест производительности yabs"
-	  echo -e "${gl_kjlan}22.  ${gl_bai}Сценарий теста производительности процессора icu/gb5"
+	  echo -e "${gl_kjlan}22.  ${gl_bai}Сценарий тестирования производительности процессора icu/gb5"
 
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}Комплексное тестирование"
@@ -8355,7 +8355,7 @@ linux_test() {
 			  ;;
 		  22)
 			  clear
-			  send_stats "Сценарий теста производительности процессора icu/gb5"
+			  send_stats "Сценарий тестирования производительности процессора icu/gb5"
 			  check_swap
 			  bash <(curl -sL bash.icu/gb5)
 			  ;;
@@ -8617,7 +8617,7 @@ linux_ldnmp() {
 	echo -e "${gl_huang}21.  ${gl_bai}Устанавливайте только nginx${gl_huang}★${gl_bai}                     ${gl_huang}22.  ${gl_bai}перенаправление сайта"
 	echo -e "${gl_huang}23.  ${gl_bai}Обратный прокси сайта-IP+порт${gl_huang}★${gl_bai}            ${gl_huang}24.  ${gl_bai}Доменное имя обратного прокси-сервера сайта"
 	echo -e "${gl_huang}25.  ${gl_bai}Установите платформу управления паролями Bitwarden${gl_huang}26.  ${gl_bai}Установить сайт блога Halo"
-	echo -e "${gl_huang}27.  ${gl_bai}Установите генератор слов для рисования AI${gl_huang}28.  ${gl_bai}Балансировка нагрузки обратного прокси-сервера сайта"
+	echo -e "${gl_huang}27.  ${gl_bai}Установите генератор слов для рисования AI${gl_huang}28.  ${gl_bai}Балансировка нагрузки обратного прокси-сервера на сайте"
 	echo -e "${gl_huang}29.  ${gl_bai}Потоковая четырехуровневая переадресация прокси${gl_huang}30.  ${gl_bai}Пользовательский статический сайт"
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}31.  ${gl_bai}Управление данными сайта${gl_huang}★${gl_bai}                    ${gl_huang}32.  ${gl_bai}Резервное копирование данных всего сайта"
@@ -9075,7 +9075,7 @@ linux_ldnmp() {
 			  latest_sql=$(ls -t *.sql | head -n 1)
 			  dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
 			  docker exec -i mysql mysql -u root -p"$dbrootpasswd" $dbname < "/home/$latest_sql"
-			  echo "Данные импортированной таблицы базы данных"
+			  echo "Импортированные табличные данные базы данных"
 			  docker exec -i mysql mysql -u root -p"$dbrootpasswd" -e "USE $dbname; SHOW TABLES;"
 			  rm -f *.sql
 			  echo "Импорт базы данных завершен."
@@ -9211,7 +9211,7 @@ linux_ldnmp() {
 
 	  27)
 	  clear
-	  webname="Генератор слов для рисования AI"
+	  webname="Генератор слов для рисования с помощью искусственного интеллекта"
 	  send_stats "Установить$webname"
 	  echo "Начать развертывание$webname"
 	  add_yuming
@@ -9928,7 +9928,7 @@ EOF
 
 		# 5. Выберите модель по умолчанию.
 		echo
-		read -erp "Введите идентификатор модели по умолчанию (или серийный номер, оставьте пустым, чтобы использовать первый):" input_model
+		read -erp "Введите идентификатор модели по умолчанию (или серийный номер; оставьте поле пустым, чтобы использовать первый):" input_model
 
 		if [[ -z "$input_model" && -n "$available_models" ]]; then
 			default_model=$(echo "$available_models" | head -1)
@@ -10024,7 +10024,7 @@ EOF
 			openclaw plugins list
 			echo "----------------------------------------"
 
-			# Выведите список рекомендуемых практических плагинов для копирования пользователями.
+			# Выведите список рекомендуемых практических плагинов, которые пользователи могут скопировать.
 			echo "Рекомендуемые практические плагины (вы можете напрямую скопировать ввод имени):"
 			echo "feishu # Интеграция Feishu/Lark (в данный момент загружена ✓)"
 			echo "Telegram # Интеграция бота Telegram (сейчас загружен ✓)"
@@ -10488,12 +10488,12 @@ while true; do
 	  echo -e "${gl_kjlan}1.   ${color1}Официальная версия панели пагоды${gl_kjlan}2.   ${color2}aaPanel Пагода Международная версия"
 	  echo -e "${gl_kjlan}3.   ${color3}Панель управления нового поколения 1Panel${gl_kjlan}4.   ${color4}Панель визуализации NginxProxyManager"
 	  echo -e "${gl_kjlan}5.   ${color5}Программа OpenList для создания списка файлов из нескольких магазинов${gl_kjlan}6.   ${color6}Веб-версия удаленного рабочего стола Ubuntu"
-	  echo -e "${gl_kjlan}7.   ${color7}Панель мониторинга Nezha Probe VPS${gl_kjlan}8.   ${color8}QB автономная магнитная панель загрузки BT"
+	  echo -e "${gl_kjlan}7.   ${color7}Панель мониторинга Nezha Probe VPS${gl_kjlan}8.   ${color8}Магнитная панель загрузки QB в автономном режиме BT"
 	  echo -e "${gl_kjlan}9.   ${color9}Программа почтового сервера Poste.io${gl_kjlan}10.  ${color10}Система онлайн-чата для нескольких человек RocketChat"
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}11.  ${color11}Программное обеспечение для управления проектами ZenTao${gl_kjlan}12.  ${color12}Платформа управления запланированными задачами панели Qinglong"
 	  echo -e "${gl_kjlan}13.  ${color13}Сетевой диск Cloudreve${gl_huang}★${gl_bai}                     ${gl_kjlan}14.  ${color14}Простая программа для управления изображениями на кровати."
-	  echo -e "${gl_kjlan}15.  ${color15}встроить систему управления мультимедиа${gl_kjlan}16.  ${color16}Панель проверки скорости Speedtest"
+	  echo -e "${gl_kjlan}15.  ${color15}встроенная система управления мультимедиа${gl_kjlan}16.  ${color16}Панель проверки скорости Speedtest"
 	  echo -e "${gl_kjlan}17.  ${color17}AdGuardHome удаляет рекламное ПО${gl_kjlan}18.  ${color18}onlyofficeИнтернет-офис OFFICE"
 	  echo -e "${gl_kjlan}19.  ${color19}Панель брандмауэра Leichi WAF${gl_kjlan}20.  ${color20}панель управления контейнером portainer"
 	  echo -e "${gl_kjlan}-------------------------"
@@ -10503,9 +10503,9 @@ while true; do
 	  echo -e "${gl_kjlan}27.  ${color27}Панель управления штабелем контейнеров Dockge${gl_kjlan}28.  ${color28}Инструмент проверки скорости LibreSpeed"
 	  echo -e "${gl_kjlan}29.  ${color29}агрегированная поисковая станция searchxng${gl_huang}★${gl_bai}                 ${gl_kjlan}30.  ${color30}Система личных альбомов PhotoPrism"
 	  echo -e "${gl_kjlan}-------------------------"
-	  echo -e "${gl_kjlan}31.  ${color31}Коллекция инструментов StirlingPDF${gl_kjlan}32.  ${color32}Drawio — бесплатное программное обеспечение для построения онлайн-графиков${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}31.  ${color31}Коллекция инструментов StirlingPDF${gl_kjlan}32.  ${color32}Drawio — бесплатная программа для построения онлайн-графиков${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}33.  ${color33}Панель навигации Sun-Panel${gl_kjlan}34.  ${color34}Платформа обмена файлами Pingvin-Share"
-	  echo -e "${gl_kjlan}35.  ${color35}Минималистский круг друзей${gl_kjlan}36.  ${color36}Сайт-агрегатор чатов LobeChatAI"
+	  echo -e "${gl_kjlan}35.  ${color35}Минималистичный круг друзей${gl_kjlan}36.  ${color36}Сайт-агрегатор чатов LobeChatAI"
 	  echo -e "${gl_kjlan}37.  ${color37}Панель инструментов MyIP${gl_huang}★${gl_bai}                        ${gl_kjlan}38.  ${color38}Семейное ведро Xiaoya alist"
 	  echo -e "${gl_kjlan}39.  ${color39}Инструмент для записи прямых трансляций Bililive${gl_kjlan}40.  ${color40}веб-версия webssh, инструмент подключения SSH"
 	  echo -e "${gl_kjlan}-------------------------"
@@ -10527,7 +10527,7 @@ while true; do
 	  echo -e "${gl_kjlan}67.  ${color67}ddns-go инструмент управления динамическим DNS${gl_huang}★${gl_bai}            ${gl_kjlan}68.  ${color68}Платформа управления сертификатами AllinSSL"
 	  echo -e "${gl_kjlan}69.  ${color69}Инструмент передачи файлов STFTPGo${gl_kjlan}70.  ${color70}Платформа чат-бота AstrBot"
 	  echo -e "${gl_kjlan}-------------------------"
-	  echo -e "${gl_kjlan}71.  ${color71}Частный музыкальный сервер Navidrome${gl_kjlan}72.  ${color72}менеджер паролей BitWarden${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}71.  ${color71}Частный музыкальный сервер Navidrome${gl_kjlan}72.  ${color72}менеджер паролей Bitwarden${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}73.  ${color73}Частные фильмы LibreTV${gl_kjlan}74.  ${color74}Частные фильмы MoonTV"
 	  echo -e "${gl_kjlan}75.  ${color75}Мастер мелодической музыки${gl_kjlan}76.  ${color76}Онлайн старые игры для DOS"
 	  echo -e "${gl_kjlan}77.  ${color77}Инструмент автономной загрузки Thunder${gl_kjlan}78.  ${color78}Интеллектуальная система управления документами PandaWiki"
@@ -10541,7 +10541,7 @@ while true; do
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}91.  ${color91}хранилище частного кода gitea${gl_kjlan}92.  ${color92}Файловый менеджер FileBrowser"
 	  echo -e "${gl_kjlan}93.  ${color93}Минималистичный статический файловый сервер Dufs${gl_kjlan}94.  ${color94}Инструмент высокоскоростной загрузки Gopeed"
-	  echo -e "${gl_kjlan}95.  ${color95}платформа управления безбумажными документами${gl_kjlan}96.  ${color96}Самостоятельный двухэтапный аутентификатор 2FAuth"
+	  echo -e "${gl_kjlan}95.  ${color95}платформа управления безбумажными документами${gl_kjlan}96.  ${color96}Автономный двухэтапный аутентификатор 2FAuth"
 	  echo -e "${gl_kjlan}97.  ${color97}Сеть WireGuard (сервер)${gl_kjlan}98.  ${color98}Сеть WireGuard (клиент)"
 	  echo -e "${gl_kjlan}99.  ${color99}Виртуальная машина Synology DSM${gl_kjlan}100. ${color100}Инструмент одноранговой синхронизации файлов Syncthing"
 	  echo -e "${gl_kjlan}-------------------------"
@@ -10555,7 +10555,7 @@ while true; do
 	  echo -e "${gl_kjlan}113. ${color113}Браузер Фаерфокс${gl_kjlan}114. ${color114}Робот ClawdBot/Moltbot${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}Список сторонних приложений"
-  	  echo -e "${gl_kjlan}Хотите, чтобы ваше приложение появилось здесь? Ознакомьтесь с руководством разработчика:${gl_huang}https://dev.kejilion.sh/${gl_bai}"
+  	  echo -e "${gl_kjlan}Хотите, чтобы ваше приложение появилось здесь? Ознакомьтесь с руководством для разработчиков:${gl_huang}https://dev.kejilion.sh/${gl_bai}"
 
 	  for f in "$HOME"/apps/*.conf; do
 		  [ -e "$f" ] || continue
@@ -10758,7 +10758,7 @@ while true; do
 
 
 		local docker_describe="webtop — это контейнер на базе Ubuntu. Если доступ к IP-адресу невозможен, добавьте доменное имя для доступа."
-		local docker_url="Официальный сайт: https://docs.linuxserver.io/images/docker-webtop/."
+		local docker_url="Официальный сайт: https://docs.linuxserver.io/images/docker-webtop/"
 		local docker_use=""
 		local docker_passwd=""
 		local app_size="2"
@@ -10778,7 +10778,7 @@ while true; do
 			check_docker_image_update $docker_name
 			clear
 			echo -e "Нежа мониторинг$check_docker $update_status"
-			echo "Легкий и простой в использовании инструмент с открытым исходным кодом, для мониторинга, эксплуатации и обслуживания серверов."
+			echo "Легкий и простой в использовании инструмент с открытым исходным кодом для мониторинга, эксплуатации и обслуживания серверов."
 			echo "Официальная документация по созданию сайта: https://nezha.wiki/guide/dashboard.html."
 			if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 				local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
@@ -10858,7 +10858,7 @@ while true; do
 
 			clear
 			echo -e "почтовая служба$check_docker $update_status"
-			echo "poste.io — это почтовый сервер с открытым исходным кодом,"
+			echo "poste.io — это решение для почтового сервера с открытым исходным кодом,"
 			echo "Видео-знакомство: https://www.bilibili.com/video/BV1wv421C71t?t=0.1"
 
 			echo ""
@@ -10923,7 +10923,7 @@ while true; do
 					add_app_id
 
 					clear
-					echo "poste.io установлен."
+					echo "poste.io установлен"
 					echo "------------------------"
 					echo "Вы можете получить доступ к poste.io, используя следующий адрес:"
 					echo "https://$yuming"
@@ -10948,7 +10948,7 @@ while true; do
 					add_app_id
 
 					clear
-					echo "poste.io установлен."
+					echo "poste.io установлен"
 					echo "------------------------"
 					echo "Вы можете получить доступ к poste.io, используя следующий адрес:"
 					echo "https://$yuming"
@@ -11313,7 +11313,7 @@ while true; do
 					docker compose down --rmi all
 
 					sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
-					echo "Если вы находитесь в каталоге установки по умолчанию, проект уже удален. Если вы настраиваете каталог установки, вам нужно перейти в каталог установки и выполнить его самостоятельно:"
+					echo "Если вы находитесь в каталоге установки по умолчанию, проект уже удален. Если вы настроили каталог установки, вам нужно перейти в каталог установки и выполнить его самостоятельно:"
 					echo "docker compose down && docker compose down --rmi all"
 					;;
 				*)
@@ -11458,7 +11458,7 @@ while true; do
 
 
 		local docker_describe="webtop основан на китайской версии контейнера Alpine. Если доступ к IP-адресу невозможен, добавьте доменное имя для доступа."
-		local docker_url="Официальный сайт: https://docs.linuxserver.io/images/docker-webtop/."
+		local docker_url="Официальный сайт: https://docs.linuxserver.io/images/docker-webtop/"
 		local docker_use=""
 		local docker_passwd=""
 		local app_size="2"
@@ -11816,7 +11816,7 @@ while true; do
 			docker run -d -p ${docker_port}:5032 --restart=always --name webssh -e TZ=Asia/Shanghai jrohy/webssh
 		}
 
-		local docker_describe="Простой онлайн-инструмент для подключения по SSH и инструмент по sftp"
+		local docker_describe="Простой онлайн-инструмент для подключения по SSH и инструмент sftp"
 		local docker_url="Официальный сайт: введение:${gh_proxy}github.com/Jrohy/webssh"
 		local docker_use=""
 		local docker_passwd=""
@@ -11981,7 +11981,7 @@ while true; do
 			ip_address
 			echo "Установка завершена"
 			check_docker_app_ip
-			echo "Исходное имя пользователя и пароль: admin."
+			echo "Исходное имя пользователя и пароль: admin"
 		}
 
 		docker_app_update() {
@@ -12354,7 +12354,7 @@ while true; do
 	  62|ragflow)
 		local app_id="62"
 		local app_name="База знаний RAGFlow"
-		local app_text="Движок RAG (Retrival Augmented Generation) с открытым исходным кодом, основанный на глубоком понимании документов."
+		local app_text="Механизм RAG (Retrival Augmented Generation) с открытым исходным кодом, основанный на глубоком понимании документов."
 		local app_url="Официальный сайт:${gh_https_url}github.com/infiniflow/ragflow"
 		local docker_name="ragflow-server"
 		local docker_port="8062"
@@ -12596,7 +12596,7 @@ while true; do
 
 		}
 
-		local docker_describe="Легкий и высокопроизводительный сервер потоковой передачи музыки."
+		local docker_describe="Это легкий и высокопроизводительный сервер потоковой передачи музыки."
 		local docker_url="Официальный сайт: https://www.navidrome.org/"
 		local docker_use=""
 		local docker_passwd=""
@@ -13043,7 +13043,7 @@ while true; do
 
 		}
 
-		local docker_describe="Легкий инструмент мониторинга локального сервера."
+		local docker_describe="Легкий инструмент для мониторинга автономного сервера."
 		local docker_url="Официальный сайт: введение:${gh_https_url}github.com/komari-monitor/komari/tree/main"
 		local docker_use="echo \"Учётная запись по умолчанию: admin Пароль по умолчанию: 1212156\""
 		local docker_passwd=""
@@ -13213,7 +13213,7 @@ while true; do
 		local docker_describe="Бесплатная самодельная платформа прямых трансляций с открытым исходным кодом"
 		local docker_url="Официальный сайт: https://owncast.online"
 		local docker_use="echo \"За адресом доступа следует /admin для доступа к странице администратора\""
-		local docker_passwd="echo \"Исходная учетная запись: admin Начальный пароль: abc123 Пожалуйста, своевременно измените пароль для входа после входа в систему\""
+		local docker_passwd="echo \"Исходная учетная запись: admin Начальный пароль: abc123 Пожалуйста, своевременно измените пароль для входа в систему после входа в систему\""
 		local app_size="1"
 		docker_app
 
@@ -13495,7 +13495,7 @@ while true; do
 
 		local app_id="96"
 
-		local app_name="Самостоятельный двухэтапный аутентификатор 2FAuth"
+		local app_name="Автономный двухэтапный аутентификатор 2FAuth"
 		local app_text="Самостоятельный инструмент управления учетными записями двухфакторной аутентификации (2FA) и генерации проверочного кода."
 		local app_url="Официальный сайт:${gh_https_url}github.com/Bubka/2FAuth"
 		local docker_name="2fauth"
@@ -13626,7 +13626,7 @@ while true; do
 
 		sleep 2
 		echo
-		echo -e "${gl_huang}Все конфигурации QR-кода клиента:${gl_bai}"
+		echo -e "${gl_huang}Все конфигурации клиентского QR-кода:${gl_bai}"
 		docker exec wireguard bash -c 'for i in $(ls /config | grep peer_ | sed "s/peer_//"); do echo "--- $i ---"; /app/show-peer $i; done'
 		sleep 2
 		echo
@@ -13642,7 +13642,7 @@ while true; do
 
 		}
 
-		local docker_describe="Современные высокопроизводительные инструменты виртуальных частных сетей"
+		local docker_describe="Современные, высокопроизводительные инструменты виртуальных частных сетей"
 		local docker_url="Официальный сайт: https://www.wireguard.com/"
 		local docker_use=""
 		local docker_passwd=""
@@ -13712,7 +13712,7 @@ while true; do
 
 		}
 
-		local docker_describe="Современные высокопроизводительные инструменты виртуальных частных сетей"
+		local docker_describe="Современные, высокопроизводительные инструменты виртуальных частных сетей"
 		local docker_url="Официальный сайт: https://www.wireguard.com/"
 		local docker_use=""
 		local docker_passwd=""
@@ -14639,7 +14639,7 @@ net_menu() {
 		echo "=========== Меню управления сетевой картой ==========="
 		echo "1. Включите сетевую карту."
 		echo "2. Отключите сетевую карту."
-		echo "3. Просмотр сведений о сетевой карте."
+		echo "3. Просмотр сведений о сетевой карте"
 		echo "4. Обновите информацию о сетевой карте."
 		echo "0. Вернуться в предыдущее меню"
 		echo "===================================="
@@ -14699,10 +14699,10 @@ log_menu() {
 		echo "Имя хоста: $(имя хоста)"
 		echo "Системное время: $(дата)"
 		echo
-		echo "[занятость каталога/var/log]"
+		echo "[занятие каталога /var/log]"
 		du -sh /var/log 2>/dev/null
 		echo
-		echo "[журнал занятий]"
+		echo "[занятие в журнале]"
 		journalctl --disk-usage 2>/dev/null
 		echo "========================================"
 	}
@@ -14713,7 +14713,7 @@ log_menu() {
 		echo
 		echo "=========== Меню управления системным журналом ==========="
 		echo "1. Просмотрите последний системный журнал (журнал)."
-		echo "2. Просмотр указанного журнала службы."
+		echo "2. Просмотрите указанный журнал службы."
 		echo "3. Просмотр журналов входа и безопасности."
 		echo "4. Журналы отслеживания в реальном времени."
 		echo "5. Очистите старые журналы журналов."
@@ -14825,7 +14825,7 @@ env_menu() {
 			echo ">>> Исходный файл:$file"
 			echo "-----------------------------------------------"
 
-			# Извлечь экспорт VAR=xxx или VAR=xxx
+			# Экспорт экстракта VAR=xxx или VAR=xxx
 			grep -Ev '^\s*#|^\s*$' "$file" \
 			| grep -E '^(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*=' \
 			| while read -r line; do
@@ -15015,7 +15015,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}27.  ${gl_bai}Обновление ядра Red Hat Linux${gl_kjlan}28.  ${gl_bai}Оптимизация параметров ядра системы Linux${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}29.  ${gl_bai}Инструменты сканирования вирусов${gl_huang}★${gl_bai}                     ${gl_kjlan}30.  ${gl_bai}файловый менеджер"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}31.  ${gl_bai}Переключить язык системы${gl_kjlan}32.  ${gl_bai}Инструмент украшения командной строки${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}31.  ${gl_bai}Переключить язык системы${gl_kjlan}32.  ${gl_bai}Инструмент для украшения командной строки${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}33.  ${gl_bai}Настроить системную корзину${gl_kjlan}34.  ${gl_bai}Резервное копирование и восстановление системы"
 	  echo -e "${gl_kjlan}35.  ${gl_bai}инструмент удаленного подключения ssh${gl_kjlan}36.  ${gl_bai}Инструмент управления разделами жесткого диска"
 	  echo -e "${gl_kjlan}37.  ${gl_bai}История командной строки${gl_kjlan}38.  ${gl_bai}инструмент удаленной синхронизации rsync"
@@ -15255,8 +15255,8 @@ EOF
 						;;
 					2)
 						rm -f /etc/gai.conf
-						echo "Сначала перешёл на IPv6"
-						send_stats "Сначала перешёл на IPv6"
+						echo "Переключен на приоритет IPv6."
+						send_stats "Переключен на приоритет IPv6."
 						;;
 
 					3)
@@ -15967,7 +15967,7 @@ EOF
 			  echo -e "7. Включите${gl_huang}BBR${gl_bai}ускоряться"
 			  echo -e "8. Установите часовой пояс на${gl_huang}Шанхай${gl_bai}"
 			  echo -e "9. Автоматическая оптимизация DNS-адресов${gl_huang}За рубежом: 1.1.1.1 8.8.8.8 Внутри страны: 223.5.5.5${gl_bai}"
-		  	  echo -e "10. Установите сеть на${gl_huang}приоритет IPv4${gl_bai}"
+		  	  echo -e "10. Установите сеть на${gl_huang}Приоритет IPv4${gl_bai}"
 			  echo -e "11. Установите основные инструменты${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}"
 			  echo -e "12. Оптимизация параметров ядра системы Linux переключается на${gl_huang}Режим сбалансированной оптимизации${gl_bai}"
 			  echo "------------------------------------------------"
@@ -16015,7 +16015,7 @@ EOF
 				  echo -e "[${gl_lv}OK${gl_bai}] 9/12. Автоматически оптимизировать DNS-адрес${gl_huang}${gl_bai}"
 				  echo "------------------------------------------------"
 				  prefer_ipv4
-				  echo -e "[${gl_lv}OK${gl_bai}] 10/12. Установите сеть на${gl_huang}приоритет IPv4${gl_bai}}"
+				  echo -e "[${gl_lv}OK${gl_bai}] 10/12. Установите сеть на${gl_huang}Приоритет IPv4${gl_bai}}"
 
 				  echo "------------------------------------------------"
 				  install_docker
@@ -16177,7 +16177,7 @@ linux_file() {
 				;;
 			2)  # 创建目录
 				read -e -p "Введите имя создаваемого каталога:" dirname
-				mkdir -p "$dirname" && echo "Каталог создан" || echo "Не удалось создать"
+				mkdir -p "$dirname" && echo "目录已创建" || echo "Не удалось создать"
 				send_stats "Создать каталог"
 				;;
 			3)  # 修改目录权限
@@ -16305,7 +16305,7 @@ linux_file() {
 				echo
 				if [ -z "$remote_password" ]; then
 					echo "Ошибка: введите пароль удаленного сервера."
-					send_stats "Не удалось передать файл: не введен пароль удаленного сервера."
+					send_stats "Передача файла не удалась: не введен пароль удаленного сервера."
 					continue
 				fi
 
@@ -16411,7 +16411,7 @@ while true; do
 	  echo -e "${gl_kjlan}Пакетное выполнение задач${gl_bai}"
 	  echo -e "${gl_kjlan}11. ${gl_bai}Установить скрипт технологического льва${gl_kjlan}12. ${gl_bai}Обновление системы${gl_kjlan}13. ${gl_bai}Очистите систему"
 	  echo -e "${gl_kjlan}14. ${gl_bai}Установить докер${gl_kjlan}15. ${gl_bai}Установить ББР3${gl_kjlan}16. ${gl_bai}Установить виртуальную память 1 ГБ"
-	  echo -e "${gl_kjlan}17. ${gl_bai}Установить часовой пояс Шанхай${gl_kjlan}18. ${gl_bai}Открыть все порты${gl_kjlan}51. ${gl_bai}Пользовательские инструкции"
+	  echo -e "${gl_kjlan}17. ${gl_bai}Установить часовой пояс Шанхай${gl_kjlan}18. ${gl_bai}Открыть все порты${gl_kjlan}51. ${gl_bai}пользовательская директива"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}0.  ${gl_bai}Вернуться в главное меню"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -16516,7 +16516,7 @@ echo "------------------------"
 echo -e "${gl_lan}RackNerd $10,99 в год, США, 1 ядро, 1 ГБ памяти, 20 ГБ жесткого диска, 1 Т трафика в месяц${gl_bai}"
 echo -e "${gl_bai}URL: https://my.racknerd.com/aff.php?aff=5501&pid=879.${gl_bai}"
 echo "------------------------"
-echo -e "${gl_zi}Hostinger $52,7 в год США 1 ядро ​​4G памяти 50G жесткий диск 4T трафика в месяц${gl_bai}"
+echo -e "${gl_zi}Hostinger $52,7 в год США 1 ядро ​​памяти 4G 50G жесткий диск 4T трафика в месяц${gl_bai}"
 echo -e "${gl_bai}URL: https://cart.hostinger.com/pay/d83c51e9-0c28-47a6-8414-b8ab010ef94f?_ga=GA1.3.942352702.1711283207${gl_bai}"
 echo "------------------------"
 echo -e "${gl_huang}Каменщик 49 долларов в квартал США CN2GIA Япония SoftBank 2 ядра 1 ГБ памяти 20 ГБ жесткого диска 1 Т трафика в месяц${gl_bai}"
@@ -16775,7 +16775,7 @@ echo "Запустить скрипт k"
 echo "Установить пакеты k установить nano wget | k добавить nano wget | установить nano wget"
 echo "Удалить пакет k удалить nano wget | к дель нано wget | удалить nano wget | удалить nano wget"
 echo "Обновление системы k обновление | обновление"
-echo "Очистить систему от мусора k очистить | к чистоте"
+echo "Очистить систему от мусора k очистить | К чистоте"
 echo "Переустановить системную панель k dd | переустановить"
 echo "панель управления bbr3 k bbr3 | к ббрв3"
 echo "Панель настройки ядра k nhyh | k Оптимизация ядра"
@@ -17083,7 +17083,7 @@ else
 					echo "использование:"
 					echo "k sshkey входит в интерактивное меню"
 					echo "k sshkey \"<pubkey>\" Непосредственно импортировать открытый ключ SSH."
-					echo "k sshkey <url> Импортировать открытый ключ SSH из URL-адреса."
+					echo "k sshkey <url> Импортировать открытый ключ SSH из URL"
 					echo "k sshkey github <пользователь> Импортировать открытый ключ SSH из GitHub"
 					;;
 			esac

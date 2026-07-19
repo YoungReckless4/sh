@@ -2318,7 +2318,7 @@ check_nginx_compression() {
 
 	# Check whether zstd is on and uncommented (the whole line starts with zstd on;)
 	if grep -qE '^\s*zstd\s+on;' "$CONFIG_FILE"; then
-		zstd_status="zstd compression is on"
+		zstd_status="zstd compression is enabled"
 	else
 		zstd_status=""
 	fi
@@ -3523,7 +3523,7 @@ ldnmp_Proxy_backend() {
 list_stream_services() {
 
 	STREAM_DIR="/home/web/stream.d"
-	printf "%-25s %-18s %-25s %-20s\n" "Service name" "Communication type" "Local address" "Backend address"
+	printf "%-25s %-18s %-25s %-20s\n" "Service name" "Communication type" "local address" "Backend address"
 
 	if [ -z "$(ls -A "$STREAM_DIR")" ]; then
 		return
@@ -4490,7 +4490,7 @@ yt_menu_pro() {
 				yt-dlp -U
 
 				add_app_id
-				echo "更新完成。 Press any key to continue..."
+				echo "Update completed. Press any key to continue..."
 				read ;;
 			3)
 				send_stats "Uninstalling yt-dlp..."
@@ -4537,7 +4537,7 @@ yt_menu_pro() {
 					--no-overwrites --no-post-overwrites
 				read -e -p "Execution completed, press any key to continue..." ;;
 			8)
-				send_stats "MP3下载"
+				send_stats "MP3 download"
 				read -e -p "Please enter video link:" url
 				yt-dlp -P "$VIDEO_DIR" -x --audio-format mp3 \
 					--write-subs --sub-langs all \
@@ -4654,7 +4654,7 @@ linux_clean() {
 		apk cache clean
 		echo "Delete system log..."
 		rm -rf /var/log/*
-		echo "删除APK缓存..."
+		echo "Delete APK cache..."
 		rm -rf /var/cache/apk/*
 		echo "Delete temporary files..."
 		rm -rf /tmp/*
@@ -4763,7 +4763,7 @@ while true; do
 		local dns1_ipv6="2606:4700:4700::1111"
 		local dns2_ipv6="2001:4860:4860::8888"
 		set_dns
-		send_stats "国外DNS优化"
+		send_stats "Foreign DNS optimization"
 		;;
 	  2)
 		local dns1_ipv4="223.5.5.5"
@@ -4771,14 +4771,14 @@ while true; do
 		local dns1_ipv6="2400:3200::1"
 		local dns2_ipv6="2400:da00::6666"
 		set_dns
-		send_stats "国内DNS优化"
+		send_stats "Domestic DNS optimization"
 		;;
 	  3)
 		install nano
 		chattr -i /etc/resolv.conf
 		nano /etc/resolv.conf
 		chattr +i /etc/resolv.conf
-		send_stats "手动编辑DNS配置"
+		send_stats "Manually edit DNS configuration"
 		;;
 	  *)
 		break
@@ -4832,7 +4832,7 @@ new_ssh_port() {
   open_port $new_port
   remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
 
-  echo "SSH 端口已修改为: $new_port"
+  echo "The SSH port has been modified to:$new_port"
 
   sleep 1
 
@@ -4971,7 +4971,7 @@ fetch_remote_ssh_keys() {
 	# Back up original authorized_keys
 	if [[ -f "${authorized_keys}" ]]; then
 		cp "${authorized_keys}" "${authorized_keys}.bak.$(date +%Y%m%d-%H%M%S)"
-		echo "已备份原有 authorized_keys 文件"
+		echo "The original authorized_keys file has been backed up"
 	fi
 
 	# Append public key (avoid duplication)
@@ -5023,7 +5023,7 @@ fetch_github_ssh_keys() {
 	fi
 
 	if [[ -z "${username}" ]]; then
-		echo "错误：GitHub 用户名不能为空" >&2
+		echo "Error: GitHub username cannot be empty" >&2
 		return 1
 	fi
 
@@ -5046,7 +5046,7 @@ sshkey_panel() {
 	  	  IS_KEY_ENABLED="${gl_hui}Not enabled${gl_bai}"
 	  fi
   	  echo -e "User key login mode${IS_KEY_ENABLED}"
-  	  echo "进阶玩法: https://blog.kejilion.pro/ssh-key"
+  	  echo "Advanced gameplay: https://blog.kejilion.pro/ssh-key"
   	  echo "------------------------------------------------"
   	  echo "A key pair will be generated, a more secure way to log in via SSH"
 	  echo "------------------------"
@@ -5069,7 +5069,7 @@ sshkey_panel() {
 			break_end
 			  ;;
 		  3)
-			send_stats "导入GitHub远端公钥"
+			send_stats "Import GitHub remote public key"
 			fetch_github_ssh_keys
 			break_end
 			  ;;
@@ -5081,7 +5081,7 @@ sshkey_panel() {
 			  ;;
 
 		  5)
-			send_stats "编辑公钥文件"
+			send_stats "Edit public key file"
 			install nano
 			nano ${HOME}/.ssh/authorized_keys
 			break_end
@@ -5125,7 +5125,7 @@ add_sshpasswd() {
 		read -e -p "Please enter the user name whose password you want to change (default root):" target_user
 	fi
 
-	# 回车不输入，默认 root
+	# Press Enter and do not enter, the default is root
 	target_user=${target_user:-root}
 
 	# Verify that the user exists
@@ -5145,7 +5145,7 @@ add_sshpasswd() {
 
 	restart_ssh
 
-	echo -e "${gl_lv}密码设置完毕，已更改为密码登录模式！${gl_bai}"
+	echo -e "${gl_lv}The password is set and has been changed to password login mode!${gl_bai}"
 }
 
 
@@ -5163,7 +5163,7 @@ add_sshpasswd() {
 
 root_use() {
 clear
-[ "$EUID" -ne 0 ] && echo -e "${gl_huang}hint:${gl_bai}该功能需要root用户才能运行！" && break_end && kejilion
+[ "$EUID" -ne 0 ] && echo -e "${gl_huang}hint:${gl_bai}This function requires root user to run!" && break_end && kejilion
 }
 
 
@@ -5190,7 +5190,7 @@ dd_xitong() {
 
 		dd_xitong_1() {
 		  echo -e "Initial username after reinstallation:${gl_huang}root${gl_bai}Initial password:${gl_huang}LeitboGi0ro${gl_bai}Initial port:${gl_huang}22${gl_bai}"
-		  echo -e "${gl_huang}重装后请及时修改初始密码，防止暴力入侵。 Enter passwd on the command line to change the password.${gl_bai}"
+		  echo -e "${gl_huang}After reinstallation, please change the initial password in time to prevent violent intrusion. Enter passwd on the command line to change the password.${gl_bai}"
 		  echo -e "Press any key to continue..."
 		  read -n 1 -s -r -p ""
 		  install wget
@@ -5443,7 +5443,7 @@ dd_xitong() {
 				;;
 
 			  41)
-				send_stats "Reinstall Windows 11"
+				send_stats "Reinstall windows 11"
 				dd_xitong_2
 				bash InstallNET.sh -windows 11 -lang "cn"
 				reboot
@@ -10487,7 +10487,7 @@ while true; do
 
 	  echo -e "${gl_kjlan}1.   ${color1}Pagoda panel official version${gl_kjlan}2.   ${color2}aaPanel Pagoda International Version"
 	  echo -e "${gl_kjlan}3.   ${color3}1Panel new generation management panel${gl_kjlan}4.   ${color4}NginxProxyManager visualization panel"
-	  echo -e "${gl_kjlan}5.   ${color5}OpenList multi-store file list program${gl_kjlan}6.   ${color6}Ubuntu Remote Desktop Web Edition"
+	  echo -e "${gl_kjlan}5.   ${color5}OpenList multi-store file list program${gl_kjlan}6.   ${color6}Ubuntu Remote Desktop Web Version"
 	  echo -e "${gl_kjlan}7.   ${color7}Nezha Probe VPS Monitoring Panel${gl_kjlan}8.   ${color8}QB offline BT magnetic download panel"
 	  echo -e "${gl_kjlan}9.   ${color9}Poste.io mail server program${gl_kjlan}10.  ${color10}RocketChat multi-person online chat system"
 	  echo -e "${gl_kjlan}-------------------------"
@@ -12596,7 +12596,7 @@ while true; do
 
 		}
 
-		local docker_describe="Is a lightweight, high-performance music streaming server"
+		local docker_describe="It is a lightweight, high-performance music streaming server"
 		local docker_url="Official website introduction: https://www.navidrome.org/"
 		local docker_use=""
 		local docker_passwd=""
@@ -15255,8 +15255,8 @@ EOF
 						;;
 					2)
 						rm -f /etc/gai.conf
-						echo "Switched to IPv6 first"
-						send_stats "Switched to IPv6 first"
+						echo "Switched to IPv6 priority"
+						send_stats "Switched to IPv6 priority"
 						;;
 
 					3)
@@ -16411,7 +16411,7 @@ while true; do
 	  echo -e "${gl_kjlan}Execute tasks in batches${gl_bai}"
 	  echo -e "${gl_kjlan}11. ${gl_bai}Install technology lion script${gl_kjlan}12. ${gl_bai}Update system${gl_kjlan}13. ${gl_bai}Clean the system"
 	  echo -e "${gl_kjlan}14. ${gl_bai}Install docker${gl_kjlan}15. ${gl_bai}Install BBR3${gl_kjlan}16. ${gl_bai}Set 1G virtual memory"
-	  echo -e "${gl_kjlan}17. ${gl_bai}Set time zone to Shanghai${gl_kjlan}18. ${gl_bai}Open all ports${gl_kjlan}51. ${gl_bai}Custom instructions"
+	  echo -e "${gl_kjlan}17. ${gl_bai}Set time zone to Shanghai${gl_kjlan}18. ${gl_bai}Open all ports${gl_kjlan}51. ${gl_bai}custom directive"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}0.  ${gl_bai}Return to main menu"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -16528,7 +16528,7 @@ echo "------------------------"
 echo -e "${gl_zi}V.PS 6.9 dollars per month Tokyo Softbank 2 cores 1G memory 20G hard drive 1T traffic per month${gl_bai}"
 echo -e "${gl_bai}URL: https://vps.hosting/cart/tokyo-cloud-kvm-vps/?id=148&?affid=1355&?affid=1355${gl_bai}"
 echo "------------------------"
-echo -e "${gl_kjlan}More popular VPS offers${gl_bai}"
+echo -e "${gl_kjlan}More popular VPS deals${gl_bai}"
 echo -e "${gl_bai}Website: https://kejilion.pro/topvps/${gl_bai}"
 echo "------------------------"
 echo ""
